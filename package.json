@@ -2,10 +2,27 @@
   "name": "warden",
   "version": "0.1.0",
   "description": "On-demand website QA: broken links, missing meta tags, slow pages and broken forms, emailed as an HTML report.",
+  "author": "lumiere042",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lumiere042/warden.git"
+  },
+  "homepage": "https://github.com/lumiere042/warden#readme",
+  "bugs": {
+    "url": "https://github.com/lumiere042/warden/issues"
+  },
   "type": "module",
   "bin": {
     "warden": "src/cli.js"
   },
+  "files": [
+    "src/",
+    "prompts/",
+    "qa.config.example.json",
+    ".env.example",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "qa": "node src/cli.js",
     "serve": "node src/cli.js --serve",
@@ -21,7 +38,9 @@
     "broken-links",
     "playwright",
     "monitoring",
-    "github-actions"
+    "github-actions",
+    "cli",
+    "docker"
   ],
   "license": "MIT",
   "dependencies": {

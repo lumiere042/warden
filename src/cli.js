@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import 'dotenv/config';
+import fs from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { loadConfig } from './config.js';
@@ -11,6 +12,7 @@ const HELP = `warden — automated QA for websites
 Usage:
   npm run qa -- [url] [options]       run once, save the report (and email it)
   npm run serve -- [url] [options]    open the local web page; paste a URL there to scan
+  warden [url] [options]              same, when installed with npm i -g (or via npx)
 
   url               site to check (overrides the sites in the config)
   --config <file>   config file (default: qa.config.json)
@@ -21,6 +23,8 @@ Usage:
   --strict          exit with code 1 when critical issues are found
   --serve           start the local web page instead of a one-off run
   --port <n>        port for --serve (default: 4173)
+  --host <addr>     address --serve listens on (default: 127.0.0.1; use 0.0.0.0 in Docker)
+  -v, --version     print the version
   -h, --help        show this help
 `;
 
@@ -36,16 +40,24 @@ async function main() {
       strict: { type: 'boolean', default: false },
       serve: { type: 'boolean', default: false },
       port: { type: 'string', default: process.env.PORT || '4173' },
+      host: { type: 'string', default: '127.0.0.1' },
+      version: { type: 'boolean', short: 'v', default: false },
       help: { type: 'boolean', short: 'h', default: false },
     },
   });
   if (args.help) return console.log(HELP);
+  if (args.version) return console.log(readVersion());
 
   const site = args.site || positionals[0];
   const outDir = path.resolve(args.out);
 
   if (args.serve) {
-    const { url } = await startServer({ port: Number(args.port), configPath: args.config, outDir, autoScan: site });
+    if (!isLoopback(args.host)) {
+      console.warn(
+        `\n  ⚠ Listening on ${args.host}: anyone who can reach this machine on port ${args.port} can start scans and read reports.`
+      );
+    }
+    const { url } = await startServer({ host: args.host, port: Number(args.port), configPath: args.config, outDir, autoScan: site });
     console.log(`\n  Warden is running at ${url}\n`);
     console.log(site ? `  Scanning ${site} now. Open the link to watch it.\n` : '  Open the link and paste a URL to scan.\n');
     console.log('  Press Ctrl+C to stop.\n');
@@ -65,7 +77,21 @@ async function main() {
   if (args.strict && critical) process.exitCode = 1;
 }
 
+function readVersion() {
+  const pkg = new URL('../package.json', import.meta.url);
+  return JSON.parse(fs.readFileSync(pkg, 'utf8')).version;
+}
+
+function isLoopback(host) {
+  return host === 'localhost' || host === '::1' || /^127\.\d+\.\d+\.\d+$/.test(host);
+}
+
 main().catch((err) => {
-  console.error(`\n✖ ${err.message}`);
+  // Playwright is installed but its browser isn't (common after a global or npx install).
+  if (/Executable doesn't exist/i.test(err.message)) {
+    console.error('\n✖ Chromium for Playwright is not installed.\n  Run: npx playwright install chromium');
+  } else {
+    console.error(`\n✖ ${err.message}`);
+  }
   process.exitCode = 2;
 });
