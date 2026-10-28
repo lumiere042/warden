@@ -3,10 +3,13 @@ import path from 'node:path';
 
 const DEFAULTS = {
   maxPages: 50,
-  thresholds: { loadMs: 3000, lcpMs: 2500, pageWeightKb: 3000, clsScore: 0.1 },
+  // marginPct: a page not flagged last run must go this % over a limit to be flagged (stops timing noise flip-flopping)
+  thresholds: { loadMs: 3000, lcpMs: 2500, pageWeightKb: 3000, clsScore: 0.1, marginPct: 10 },
   checkExternalLinks: true,
   exclude: ['mailto:', 'tel:', 'javascript:'],
   concurrency: 8, // link probes in flight
+  linkHostConcurrency: 2, // link probes in flight to any one host
+  ignore: [], // [{ check?, key?, page?, match?, reason? }]: matching issues are left out of the report and counts
   timeoutMs: 10000, // per link probe / sitemap fetch
   pageConcurrency: 3, // pages loaded in the browser at once
   pageTimeoutMs: 30000, // per page load in the browser
@@ -53,6 +56,7 @@ export function loadConfig({ configPath, siteOverride } = {}) {
     ...raw,
     thresholds,
     exclude,
+    ignore: validateIgnore(raw.ignore ?? DEFAULTS.ignore),
     sites: sites.map((s) => {
       if (!s.url || !safeOrigin(s.url)) throw new Error(`Invalid site url: ${s.url}`);
       return {
@@ -95,6 +99,23 @@ function resolveAi(fileAi) {
     promptFile: env.AI_PROMPT_FILE || fileAi.promptFile || null,
     maxTokens: Number(env.AI_MAX_TOKENS || fileAi.maxTokens || 16000),
   };
+}
+
+const IGNORE_FIELDS = ['check', 'key', 'page', 'match'];
+
+/** Each ignore rule needs at least one of check / key / page / match (all strings), or it would hide everything. */
+function validateIgnore(rules) {
+  if (!Array.isArray(rules)) throw new Error('"ignore" in the config must be an array of rules');
+  return rules.map((rule, n) => {
+    const where = `ignore[${n}]`;
+    if (!rule || typeof rule !== 'object' || Array.isArray(rule)) throw new Error(`${where} must be an object, e.g. { "check": "meta", "key": "open-graph" }`);
+    for (const [k, v] of Object.entries(rule)) {
+      if (![...IGNORE_FIELDS, 'reason'].includes(k)) throw new Error(`${where}: unknown field "${k}" (use ${IGNORE_FIELDS.join(', ')}, reason)`);
+      if (typeof v !== 'string') throw new Error(`${where}.${k} must be a string`);
+    }
+    if (!IGNORE_FIELDS.some((k) => rule[k])) throw new Error(`${where} would ignore every issue: give at least one of ${IGNORE_FIELDS.join(', ')}`);
+    return rule;
+  });
 }
 
 function safeOrigin(url) {

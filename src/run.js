@@ -37,7 +37,7 @@ export async function runQa(config, { outDir, ai: useAi = true, email: useEmail 
     await browser.close();
   }
 
-  const report = buildReport(siteResults, previous);
+  const report = buildReport(siteResults, previous, { ignore: config.ignore });
   const ai = useAi ? await summarize(report, config.ai, log) : { skipped: 'AI summary turned off' };
   // Saved with the JSON so the web view can show everything from the file alone.
   report.ai = ai.text ? { text: ai.text, provider: ai.provider, model: ai.model } : null;
