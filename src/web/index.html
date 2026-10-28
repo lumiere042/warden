@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Warden</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #141414; --muted: #666; --line: #e6e6e6; --soft: #f4f5f8; --bg: #ffffff;
+    --blue: #3d5afe; --coral: #ff5d5d; --yellow: #ffd23f; --mint: #1fd19b; --amber: #d49a00;
+    --display: 'Fredoka', ui-rounded, 'Segoe UI', system-ui, sans-serif;
+    --body: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-weight: 700; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 28px 16px 64px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+  header h1 { font-family: var(--display); font-size: 34px; margin: 0; letter-spacing: -0.5px; }
+  header .tag { margin-left: auto; font-size: 13px; color: var(--muted); border: 2px solid var(--line); border-radius: 999px; padding: 4px 12px; }
+  .card { background: #fff; border: 3px solid var(--ink); border-radius: 20px; box-shadow: 6px 6px 0 var(--ink); padding: 24px; }
+  .hero h2 { font-family: var(--display); font-size: 30px; margin: 0 0 6px; }
+  .hero p { margin: 0 0 18px; color: var(--muted); }
+  .hl { background: linear-gradient(transparent 58%, var(--yellow) 58%, var(--yellow) 90%, transparent 90%); }
+  .scanrow { display: flex; gap: 12px; flex-wrap: wrap; }
+  .scanrow input { flex: 1 1 320px; min-width: 0; font: 700 20px var(--body); padding: 14px 18px; border: 3px solid var(--ink); border-radius: 14px; outline: none; }
+  .scanrow input:focus { box-shadow: 0 0 0 4px #c9d2ff; }
+  button { font: 700 20px var(--display); background: var(--blue); color: #fff; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 4px 4px 0 var(--ink); padding: 12px 26px; cursor: pointer; transition: transform .08s, box-shadow .08s; }
+  button:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+  button:disabled { background: #9aa6e8; cursor: wait; }
+  .opts { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 16px; font-size: 15px; color: #333; }
+  .opts label { display: inline-flex; align-items: center; gap: 8px; }
+  .opts input[type=number] { width: 72px; font: 700 15px var(--body); padding: 4px 8px; border: 2px solid var(--ink); border-radius: 8px; }
+  .opts input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--blue); }
+  .opts .off { color: #aaa; }
+  .err { margin-top: 14px; color: var(--coral); font-size: 15px; }
+  section { margin-top: 26px; }
+  .hidden { display: none !important; }
+
+  .progress .top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .progress .top b { font-family: var(--display); font-size: 22px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .spin { width: 22px; height: 22px; border: 4px solid #c9d2ff; border-top-color: var(--blue); border-radius: 50%; animation: spin .8s linear infinite; flex: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .bar { height: 14px; border: 3px solid var(--ink); border-radius: 999px; overflow: hidden; background: var(--soft); }
+  .bar div { height: 100%; width: 0; background: var(--blue); transition: width .4s ease; }
+  .step { margin-top: 10px; color: var(--muted); font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  details { margin-top: 12px; font-size: 14px; }
+  details summary { cursor: pointer; color: var(--muted); }
+  pre { margin: 8px 0 0; max-height: 220px; overflow: auto; background: var(--soft); border-radius: 12px; padding: 12px; font: 600 12.5px ui-monospace, Consolas, monospace; white-space: pre-wrap; word-break: break-all; }
+
+  .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 4px 0 16px; }
+  .tile { border: 3px solid var(--ink); border-radius: 16px; box-shadow: 4px 4px 0 var(--ink); text-align: center; padding: 12px 6px; background: #fff; }
+  .tile .n { font: 700 34px var(--display); line-height: 1.1; }
+  .tile .l { font-size: 11px; letter-spacing: 1.2px; color: var(--muted); text-transform: uppercase; }
+  .result-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+  .result-head h3 { font-family: var(--display); font-size: 22px; margin: 0; flex: 1 1 300px; }
+  .link { font: 600 16px var(--display); color: var(--ink); text-decoration: none; border: 3px solid var(--ink); border-radius: 999px; padding: 6px 16px; background: var(--yellow); box-shadow: 3px 3px 0 var(--ink); white-space: nowrap; }
+  iframe { width: 100%; height: 900px; border: 3px solid var(--ink); border-radius: 16px; background: #f6f8fa; display: block; }
+
+  .recent h3 { font-family: var(--display); font-size: 20px; margin: 0 0 10px; }
+  .recent ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .recent a { display: flex; justify-content: space-between; gap: 12px; color: var(--ink); text-decoration: none; background: var(--soft); border-radius: 12px; padding: 10px 14px; font-size: 15px; }
+  .recent a:hover { background: #e9ecff; }
+  .recent .when { color: var(--muted); white-space: nowrap; }
+  .empty { color: var(--muted); font-size: 15px; }
+
+  @media (max-width: 640px) {
+    .tiles { grid-template-columns: repeat(3, 1fr); }
+    .hero h2 { font-size: 24px; }
+    iframe { height: 700px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <svg width="40" height="46" viewBox="0 0 128 148" aria-hidden="true"><path d="M64 6 L116 26 V70 C116 106 92 130 64 142 C36 130 12 106 12 70 V26 Z" fill="#3d5afe" stroke="#141414" stroke-width="8" stroke-linejoin="round"/><path d="M40 74 L58 92 L90 56" fill="none" stroke="#fff" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <h1>Warden</h1>
+    <span class="tag">running locally</span>
+  </header>
+
+  <form id="scanForm" class="card hero" autocomplete="off">
+    <h2>Check a <span class="hl">website</span></h2>
+    <p>Paste a link. Warden crawls it, checks links, meta tags, speed and forms, and shows the report here.</p>
+    <div class="scanrow">
+      <input id="url" type="text" inputmode="url" placeholder="https://example.com" aria-label="Website URL" required>
+      <button id="go" type="submit">Run QA</button>
+    </div>
+    <div class="opts">
+      <label>Max pages <input id="maxPages" type="number" min="1" max="500" value="50"></label>
+      <label><input id="external" type="checkbox" checked> Check external links</label>
+      <label id="aiLabel"><input id="ai" type="checkbox" checked> AI summary</label>
+      <label id="emailLabel"><input id="email" type="checkbox"> Also email me</label>
+    </div>
+    <div id="formErr" class="err hidden"></div>
+  </form>
+
+  <section id="progress" class="card progress hidden">
+    <div class="top"><div class="spin" id="spin"></div><b id="progTitle">Starting…</b></div>
+    <div class="bar"><div id="barFill"></div></div>
+    <div class="step" id="step">Launching browser…</div>
+    <details><summary>Show log</summary><pre id="log"></pre></details>
+  </section>
+
+  <section id="result" class="hidden">
+    <div class="result-head">
+      <h3 id="resultTitle"></h3>
+      <a id="openReport" class="link" href="#" target="_blank" rel="noopener">Open full report ↗</a>
+    </div>
+    <div class="tiles">
+      <div class="tile"><div class="n" id="tCrit" style="color:var(--coral)">0</div><div class="l">Critical</div></div>
+      <div class="tile"><div class="n" id="tWarn" style="color:var(--amber)">0</div><div class="l">Warnings</div></div>
+      <div class="tile"><div class="n" id="tNew" style="color:var(--blue)">0</div><div class="l">New</div></div>
+      <div class="tile"><div class="n" id="tFixed" style="color:#12a87b">0</div><div class="l">Fixed</div></div>
+      <div class="tile"><div class="n" id="tPages">0</div><div class="l">Pages</div></div>
+    </div>
+    <iframe id="frame" title="QA report"></iframe>
+  </section>
+
+  <section class="card recent">
+    <h3>Recent reports</h3>
+    <ul id="recent"></ul>
+  </section>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  let source = null;
+
+  async function loadStatus() {
+    const s = await (await fetch('/api/status')).json();
+    if (!s.aiConfigured) { $('ai').checked = false; $('ai').disabled = true; $('aiLabel').classList.add('off'); $('aiLabel').title = 'Set AI_PROVIDER and a key in .env to enable'; }
+    if (!s.emailConfigured) { $('email').disabled = true; $('emailLabel').classList.add('off'); $('emailLabel').title = 'Set EMAIL_PROVIDER, EMAIL_TO and EMAIL_FROM in .env to enable'; }
+    renderRecent(s.reports);
+    if (s.running) { $('url').value = s.running.url; watch(s.running.id, s.running.url); }
+  }
+
+  function renderRecent(reports) {
+    const ul = $('recent');
+    ul.replaceChildren();
+    if (!reports.length) {
+      const li = document.createElement('li'); li.className = 'empty'; li.textContent = 'No reports yet. Run your first scan above.'; ul.append(li); return;
+    }
+    for (const r of reports) {
+      const m = r.name.match(/^(\d{4}-\d{2}-\d{2})_(\d{2})(\d{2})_(.+)\.html$/);
+      const a = document.createElement('a'); a.href = r.url; a.target = '_blank'; a.rel = 'noopener';
+      const site = document.createElement('span'); site.textContent = m ? m[4] : r.name;
+      const when = document.createElement('span'); when.className = 'when';
+      when.textContent = m ? new Date(`${m[1]}T${m[2]}:${m[3]}:00Z`).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '';
+      a.append(site, when);
+      const li = document.createElement('li'); li.append(a); ul.append(li);
+    }
+  }
+
+  $('scanForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    $('formErr').classList.add('hidden');
+    const body = { url: $('url').value, maxPages: $('maxPages').value, external: $('external').checked, ai: $('ai').checked, email: $('email').checked };
+    const res = await fetch('/api/scan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (res.status === 409 && data.id) return watch(data.id, $('url').value);
+    if (!res.ok) { $('formErr').textContent = data.error; $('formErr').classList.remove('hidden'); return; }
+    watch(data.id, data.url);
+  });
+
+  function watch(id, url) {
+    source?.close();
+    $('go').disabled = true;
+    $('result').classList.add('hidden');
+    $('progress').classList.remove('hidden');
+    $('spin').classList.remove('hidden');
+    $('progTitle').textContent = `Checking ${url}`;
+    $('step').textContent = 'Launching browser…';
+    $('log').textContent = '';
+    setBar(3);
+
+    source = new EventSource(`/api/scan/${id}/events`);
+    source.addEventListener('log', (e) => onLine(JSON.parse(e.data)));
+    source.addEventListener('done', (e) => { source.close(); finish(JSON.parse(e.data)); });
+    source.addEventListener('failed', (e) => { source.close(); fail(JSON.parse(e.data).error); });
+  }
+
+  function onLine(line) {
+    $('log').textContent += line + '\n';
+    $('log').scrollTop = $('log').scrollHeight;
+    const crawl = line.match(/crawl (\d+)\/(\d+) (.+)$/);
+    if (crawl) { setBar(5 + 60 * (crawl[1] / crawl[2])); return step(`Crawling page ${crawl[1]} of ${crawl[2]}: ${crawl[3]}`); }
+    if (/checking links/.test(line)) { setBar(70); return step('Checking every link and image…'); }
+    if (/testing forms/.test(line)) { setBar(80); return step('Testing forms…'); }
+    if (/AI summary via/.test(line)) { setBar(90); return step('Writing the AI summary…'); }
+    if (/^\s*done:/.test(line)) { setBar(86); return step('Building the report…'); }
+  }
+  const step = (t) => { $('step').textContent = t; };
+  const setBar = (pct) => { $('barFill').style.width = `${Math.min(100, pct)}%`; };
+
+  function finish(r) {
+    setBar(100);
+    $('go').disabled = false;
+    $('progress').classList.add('hidden');
+    $('result').classList.remove('hidden');
+    $('resultTitle').textContent = r.subject.replace(/^QA /, '');
+    $('openReport').href = r.reportUrl;
+    $('tCrit').textContent = r.counts.critical;
+    $('tWarn').textContent = r.counts.warning;
+    $('tNew').textContent = r.counts.new;
+    $('tFixed').textContent = r.fixed;
+    $('tPages').textContent = r.pagesCrawled;
+    const frame = $('frame');
+    frame.onload = () => { try { frame.style.height = frame.contentDocument.documentElement.scrollHeight + 8 + 'px'; } catch {} };
+    frame.src = r.reportUrl;
+    fetch('/api/status').then((x) => x.json()).then((s) => renderRecent(s.reports));
+    $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function fail(message) {
+    $('go').disabled = false;
+    $('spin').classList.add('hidden');
+    $('progTitle').textContent = 'Scan failed';
+    step(message);
+  }
+
+  loadStatus();
+</script>
+</body>
+</html>

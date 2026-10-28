@@ -57,14 +57,21 @@ export function loadPrevious(dir) {
   }
 }
 
-export function saveReport(dir, report, html) {
+export function saveReport(dir, report, html, previous = null) {
   fs.mkdirSync(dir, { recursive: true });
-  const stamp = report.generatedAt.slice(0, 10);
-  const htmlPath = path.join(dir, `${stamp}.html`);
+  // e.g. 2026-10-28_1543_example.com — one file per run, so runs on the same day don't overwrite each other.
+  const time = report.generatedAt.slice(0, 16).replace('T', '_').replace(':', '');
+  const hosts = report.sites.map((s) => new URL(s.url).host.replace(/[^a-z0-9.-]/gi, '-')).join('+');
+  const base = `${time}_${hosts}`.slice(0, 120);
+  const htmlPath = path.join(dir, `${base}.html`);
   fs.writeFileSync(htmlPath, html);
-  fs.writeFileSync(path.join(dir, `${stamp}.json`), JSON.stringify(report, null, 2));
-  // Only what's needed for the next run's new/fixed diff.
-  const last = { generatedAt: report.generatedAt, issues: report.sites.flatMap((s) => s.issues.map(({ id, check, page, message, severity }) => ({ id, check, page, message, severity }))) };
+  fs.writeFileSync(path.join(dir, `${base}.json`), JSON.stringify(report, null, 2));
+
+  // Only what's needed for the next run's new/fixed diff. Keep other sites' history,
+  // so checking site A doesn't make site B's issues all look "new" next time.
+  const current = report.sites.flatMap((s) => s.issues.map(({ id, check, page, message, severity }) => ({ id, check, page, message, severity })));
+  const otherSites = (previous?.issues || []).filter((i) => !report.sites.some((s) => i.id.startsWith(`${s.url}|`)));
+  const last = { generatedAt: report.generatedAt, issues: [...otherSites, ...current] };
   fs.writeFileSync(path.join(dir, 'last.json'), JSON.stringify(last, null, 2));
   return htmlPath;
 }

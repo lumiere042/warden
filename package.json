@@ -8,6 +8,7 @@
   },
   "scripts": {
     "qa": "node src/cli.js",
+    "serve": "node src/cli.js --serve",
     "fixture": "node test/fixture-site/server.js",
     "test": "node --test --test-concurrency=1 \"test/*.test.js\""
   },

@@ -2,33 +2,31 @@
 import 'dotenv/config';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
-import { chromium } from 'playwright';
 import { loadConfig } from './config.js';
-import { crawlSite } from './crawler.js';
-import { checkLinks } from './checks/links.js';
-import { checkMeta } from './checks/meta.js';
-import { checkPerformance } from './checks/performance.js';
-import { checkForms } from './checks/forms.js';
-import { buildReport, loadPrevious, saveReport, subjectLine } from './report/build.js';
-import { renderHtml } from './report/html.js';
-import { summarize } from './ai/summarize.js';
-import { sendEmail } from './email/send.js';
+import { runQa } from './run.js';
+import { startServer } from './server.js';
 
 const HELP = `warden — automated QA for websites
 
-Usage: npm run qa -- [options]
+Usage:
+  npm run qa -- [url] [options]       run once, save the report (and email it)
+  npm run serve -- [url] [options]    open the local web page; paste a URL there to scan
 
+  url               site to check (overrides the sites in the config)
   --config <file>   config file (default: qa.config.json)
-  --site <url>      check this URL instead of the sites in the config
+  --site <url>      same as giving a url
   --no-email        write the report but don't email it
   --no-ai           skip the AI summary
   --out <dir>       where reports are written (default: reports)
   --strict          exit with code 1 when critical issues are found
+  --serve           start the local web page instead of a one-off run
+  --port <n>        port for --serve (default: 4173)
   -h, --help        show this help
 `;
 
 async function main() {
-  const { values: args } = parseArgs({
+  const { values: args, positionals } = parseArgs({
+    allowPositionals: true,
     options: {
       config: { type: 'string' },
       site: { type: 'string' },
@@ -36,58 +34,32 @@ async function main() {
       'no-ai': { type: 'boolean', default: false },
       out: { type: 'string', default: 'reports' },
       strict: { type: 'boolean', default: false },
+      serve: { type: 'boolean', default: false },
+      port: { type: 'string', default: process.env.PORT || '4173' },
       help: { type: 'boolean', short: 'h', default: false },
     },
   });
   if (args.help) return console.log(HELP);
 
-  const config = loadConfig({ configPath: args.config, siteOverride: args.site });
+  const site = args.site || positionals[0];
   const outDir = path.resolve(args.out);
-  const log = (msg) => console.log(msg);
 
-  const browser = await chromium.launch();
-  const siteResults = [];
-  try {
-    for (const site of config.sites) {
-      log(`\n▶ ${site.url}`);
-      const pages = await crawlSite(browser, site, config, log);
-      log(`  checking links…`);
-      const links = await checkLinks(pages, site, config);
-      log(`  testing forms…`);
-      const forms = await checkForms(browser, pages, site, config);
-      const meta = checkMeta(pages);
-      const performance = checkPerformance(pages, config);
-      siteResults.push({ site, pages, links, forms, meta, performance });
-      const n = (r) => r.issues.length;
-      log(`  done: ${n(links)} link, ${n(forms)} form, ${n(meta)} meta, ${n(performance)} performance issues`);
-    }
-  } finally {
-    await browser.close();
+  if (args.serve) {
+    const { url } = await startServer({ port: Number(args.port), configPath: args.config, outDir, autoScan: site });
+    console.log(`\n  Warden is running at ${url}\n`);
+    console.log(site ? `  Scanning ${site} now. Open the link to watch it.\n` : '  Open the link and paste a URL to scan.\n');
+    console.log('  Press Ctrl+C to stop.\n');
+    return;
   }
 
-  const report = buildReport(siteResults, loadPrevious(outDir));
-  const ai = args['no-ai'] ? { skipped: '--no-ai' } : await summarize(report, config.ai, log);
-  const fullHtml = renderHtml(report, ai);
-  const htmlPath = saveReport(outDir, report, fullHtml);
-  const subject = subjectLine(report);
-  log(`\n${subject}\nReport: ${htmlPath}`);
-
-  if (!args['no-email']) {
-    if (!config.email.provider) {
-      log('Email skipped: EMAIL_PROVIDER is not set (use --no-email to silence this).');
-    } else {
-      const id = await sendEmail(
-        {
-          subject,
-          html: renderHtml(report, ai, { maxRows: 25 }),
-          attachmentHtml: fullHtml,
-          attachmentName: path.basename(htmlPath),
-        },
-        config.email
-      );
-      log(`Email sent to ${config.email.to.join(', ')}${id ? ` (${id})` : ''}`);
-    }
-  }
+  const config = loadConfig({ configPath: args.config, siteOverride: site });
+  const { report, htmlPath, subject } = await runQa(config, {
+    outDir,
+    ai: !args['no-ai'],
+    email: !args['no-email'],
+    log: (msg) => console.log(msg),
+  });
+  console.log(`\n${subject}\nReport: ${htmlPath}`);
 
   const critical = report.sites.reduce((n, s) => n + s.counts.critical, 0);
   if (args.strict && critical) process.exitCode = 1;

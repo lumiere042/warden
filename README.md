@@ -46,8 +46,26 @@ npx playwright install chromium
 cp .env.example .env                       # email + optional AI keys
 cp qa.config.example.json qa.config.json   # your site + forms
 
-npm run qa -- --no-email     # writes reports/<date>.html - open it in a browser
+npm run serve                # local web page: paste any URL, see the report in your browser
+npm run qa -- --no-email     # one-off run in the terminal, report saved to reports/
 npm run qa                   # same, and emails it
+```
+
+`.env` and `qa.config.json` are optional for `npm run serve`; you can scan any URL straight away.
+
+### Check any site from your browser
+
+```bash
+npm run serve                        # then open http://localhost:4173 and paste a URL
+npm run serve -- example.com         # or start scanning right away; open the link to watch
+```
+
+You'll see live progress while it crawls, then the full report on the same page. Past reports are listed underneath. Email is off by default here; tick **Also email me** if you've set it up in `.env`. The page only listens on your own machine (`127.0.0.1`), and `--port 5000` picks a different port.
+
+For a quick result in the terminal instead, pass the URL to `qa`:
+
+```bash
+npm run qa -- example.com --no-email
 ```
 
 To try it without touching a real site, use the bundled demo site, which has deliberate bugs:
@@ -210,13 +228,16 @@ The email body shows up to 25 rows per section. The complete report is attached 
 ## Command-line options
 
 ```
-npm run qa -- [options]
+npm run qa -- [url] [options]       one-off run in the terminal
+npm run serve -- [url] [options]    local web page at http://localhost:4173
+
+  url               site to check (instead of the sites in qa.config.json)
   --config <file>   config file (default: qa.config.json)
-  --site <url>      check this URL instead of the configured sites
   --no-email        write the report but don't email it
   --no-ai           skip the AI summary
   --out <dir>       report folder (default: reports)
   --strict          exit with code 1 when critical issues are found (fails the GitHub run)
+  --port <n>        port for serve (default: 4173)
 ```
 
 ## Development
