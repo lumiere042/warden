@@ -49,6 +49,11 @@ export function pathOf(url) {
   }
 }
 
+/** Throws the error runQa reports when a scan is stopped through its AbortSignal. */
+export function throwIfAborted(signal) {
+  if (signal?.aborted) throw new Error('Scan cancelled');
+}
+
 export function escapeHtml(s) {
   return String(s ?? '')
     .replace(/&/g, '&amp;')

@@ -1,13 +1,20 @@
 import { normalizeUrl, isExcluded, sameSite, mapLimit } from '../util.js';
+import { authHeaders } from '../browser.js';
 
 // Sites that commonly refuse bots; a 403/429/999 from these is a warning, not a broken link.
 const BOT_BLOCK_STATUSES = new Set([401, 403, 429, 999]);
+
+export default {
+  name: 'links',
+  title: 'Broken links',
+  run: ({ pages, site, config, signal }) => checkLinks(pages, site, config, signal),
+};
 
 /**
  * Check every unique link/asset found on crawled pages.
  * Internal HTML pages already loaded by the crawler reuse that status instead of re-fetching.
  */
-export async function checkLinks(pages, site, config) {
+export async function checkLinks(pages, site, config, signal) {
   const sources = new Map(); // url -> Set(page urls that reference it)
   for (const page of pages) {
     for (const link of page.links) {
@@ -23,6 +30,7 @@ export async function checkLinks(pages, site, config) {
   const urls = [...sources.keys()];
 
   const results = await mapLimit(urls, config.concurrency, async (url) => {
+    if (signal?.aborted) return { url, skipped: true };
     const crawled = known.get(url);
     if (crawled && (crawled.status || crawled.error)) {
       return { url, status: crawled.status, error: crawled.error };
@@ -32,17 +40,19 @@ export async function checkLinks(pages, site, config) {
 
   const issues = [];
   for (const r of results) {
+    if (r.skipped) continue;
     const { kind, pages: from } = sources.get(r.url);
     const external = !sameSite(r.url, site.url);
     const foundOn = [...from];
     if (r.error) {
-      issues.push({ check: 'links', severity: 'critical', key: r.url, page: foundOn[0], message: `Unreachable ${kind}: ${r.error}`, detail: { url: r.url, kind, error: r.error, foundOn } });
+      issues.push({ check: 'links', severity: 'critical', key: r.url, siteWide: true, page: foundOn[0], message: `Unreachable ${kind}: ${r.error}`, detail: { url: r.url, kind, error: r.error, foundOn } });
     } else if (r.status >= 400) {
       const blocked = external && BOT_BLOCK_STATUSES.has(r.status);
       issues.push({
         check: 'links',
         severity: blocked ? 'warning' : 'critical',
         key: r.url,
+        siteWide: true,
         page: foundOn[0],
         message: blocked ? `${r.status} (site may block bots)` : `Broken ${kind} (${r.status})`,
         detail: { url: r.url, kind, status: r.status, foundOn },
@@ -57,7 +67,7 @@ async function probe(url, config) {
     const res = await fetch(url, {
       method,
       redirect: 'follow',
-      headers: { 'user-agent': config.userAgent, accept: '*/*' },
+      headers: { 'user-agent': config.userAgent, accept: '*/*', ...authHeaders(config, url) },
       signal: AbortSignal.timeout(config.timeoutMs),
     });
     // Don't download bodies we don't need.

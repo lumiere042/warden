@@ -1,5 +1,6 @@
 import { escapeHtml as e, pathOf } from '../util.js';
-import { fmtMs, fmtKb } from '../checks/performance.js';
+import { fmtMs, fmtKb, fmtCls } from '../checks/performance.js';
+import { CHECKS } from '../checks/index.js';
 
 // Inline styles only: email clients (Gmail, Outlook) drop most <style> rules.
 const C = { text: '#1f2328', muted: '#656d76', border: '#d0d7de', bg: '#f6f8fa', red: '#cf222e', amber: '#9a6700', green: '#1a7f37', blue: '#0969da' };
@@ -41,21 +42,41 @@ function aiBlock(ai) {
   </div></td></tr>`;
 }
 
+// Checks with their own layout. Any other check gets genericSection().
+const SECTIONS = {
+  links: (s, list, maxRows) =>
+    section('Broken links', list, maxRows, ['Link', 'Problem', 'Found on'], (i) => [
+      `<a href="${e(i.detail.url)}" style="color:${C.blue};word-break:break-all;">${e(shorten(i.detail.url))}</a>${newTag(i)}`,
+      sev(i) + e(i.message),
+      foundOn(i.detail.foundOn),
+    ]),
+  forms: (s, list, maxRows) => formsSection(s, maxRows),
+  performance: (s, list, maxRows) =>
+    section('Slow pages', list, maxRows, ['Page', 'Problem'], (i) => [pageLink(i.page) + newTag(i), sev(i) + e(i.message)], perfSummary(s.performance)),
+  meta: (s, list, maxRows) => section('Meta & SEO', list, maxRows, ['Page', 'Problem'], (i) => [pageLink(i.page) + newTag(i), sev(i) + e(i.message)]),
+};
+
+function genericSection(title, list, maxRows) {
+  return section(e(title), list, maxRows, ['Page', 'Problem'], (i) => {
+    const on = i.siteWide && i.detail?.pages?.length > 1 ? i.detail.pages : null;
+    const where = on ? `<div style="color:${C.muted};">${on.length} page${on.length === 1 ? '' : 's'}</div>${foundOn(on)}` : pageLink(i.page);
+    return [where + newTag(i), sev(i) + e(i.message)];
+  });
+}
+
 function siteBlock(s, maxRows) {
   const byCheck = (check) => s.issues.filter((i) => i.check === check);
+  // Reports saved before checks were pluggable have no s.checks: show the original four sections.
+  const ran = CHECKS.filter((c) => (s.checks ? s.checks[c.name] : SECTIONS[c.name]));
+  const sections = ran.map((c) =>
+    SECTIONS[c.name] ? SECTIONS[c.name](s, byCheck(c.name), maxRows) : genericSection(s.checks[c.name].title || c.title, byCheck(c.name), maxRows)
+  );
   return `<tr><td style="padding:16px 24px 0;">
   <div style="font-size:17px;font-weight:600;border-top:1px solid ${C.border};padding-top:16px;"><a href="${e(s.url)}" style="color:${C.text};text-decoration:none;">${e(new URL(s.url).host)}</a></div>
   <div style="font-size:13px;color:${C.muted};margin:4px 0 12px;">${s.pagesCrawled} pages crawled · ${s.linksChecked} links checked</div>
   ${stats(s)}
 </td></tr>
-${section('Broken links', byCheck('links'), maxRows, ['Link', 'Problem', 'Found on'], (i) => [
-    `<a href="${e(i.detail.url)}" style="color:${C.blue};word-break:break-all;">${e(shorten(i.detail.url))}</a>${newTag(i)}`,
-    sev(i) + e(i.message),
-    foundOn(i.detail.foundOn),
-  ])}
-${formsSection(s, maxRows)}
-${section('Slow pages', byCheck('performance'), maxRows, ['Page', 'Problem'], (i) => [pageLink(i.page) + newTag(i), sev(i) + e(i.message)], perfSummary(s.performance))}
-${section('Meta & SEO', byCheck('meta'), maxRows, ['Page', 'Problem'], (i) => [pageLink(i.page) + newTag(i), sev(i) + e(i.message)])}
+${sections.join('\n')}
 ${fixedSection(s, maxRows)}`;
 }
 
@@ -113,6 +134,7 @@ function perfSummary(p) {
   const bits = [`avg load ${fmtMs(p.avgLoadMs)}`];
   if (p.avgLcpMs != null) bits.push(`avg LCP ${fmtMs(p.avgLcpMs)}`);
   if (p.avgTransferKb != null) bits.push(`avg weight ${fmtKb(p.avgTransferKb)}`);
+  if (p.avgCls != null) bits.push(`avg CLS ${fmtCls(p.avgCls)}`);
   return `<div style="font-size:13px;color:${C.muted};margin-bottom:8px;">${bits.join(' · ')}</div>`;
 }
 
