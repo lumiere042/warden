@@ -3,6 +3,7 @@ import links from './links.js';
 import forms from './forms-check.js';
 import performance from './performance.js';
 import meta from './meta.js';
+import visual from './visual.js';
 
 /**
  * Every check Warden runs, in order. The order is also the order of the report sections.
@@ -13,10 +14,15 @@ import meta from './meta.js';
  *     name: 'links',          // unique id; becomes issue.check and the key in report.sites[].checks
  *     title: 'Broken links',  // section heading in the reports
  *
+ *     // Optional. Return false to skip the check entirely for this run (no collect, no run,
+ *     // no report section), e.g. a check that is off unless turned on in the config.
+ *     enabled: (config) => true,
+ *
  *     // Optional. Runs on the live Playwright page while crawling, after the DOM is collected
  *     // (HTML pages only, each page in its own context). Save what run() needs in
  *     // result.data[name]. Keep it quick, and catch your own errors.
- *     async collect({ page, response, result, site, config }) {},
+ *     // outDir is the reports folder, for checks that keep files between runs (e.g. visual).
+ *     async collect({ page, response, result, site, config, outDir }) {},
  *
  *     // Required. Runs once per site after the crawl.
  *     //   browser   Playwright browser (use newContext() from ../browser.js for new pages)
@@ -25,7 +31,8 @@ import meta from './meta.js';
  *     //   site      the site's config entry; config: the whole config
  *     //   previous  the last run's saved issues (last.json) or null
  *     //   log       progress logger; signal: AbortSignal, stop early when signal.aborted
- *     async run({ browser, pages, site, config, previous, log, signal }) {
+ *     //   outDir    the reports folder (undefined when crawlSite/runQa were called without one)
+ *     async run({ browser, pages, site, config, previous, log, signal, outDir }) {
  *       return { checked, issues, summary }; // summary and any other fields are optional
  *     },
  *   };
@@ -35,4 +42,7 @@ import meta from './meta.js';
  *   siteWide  true when the issue isn't tied to one page (key alone identifies it, e.g. a broken URL
  *             found on many pages); put the affected pages in detail.pages to have them listed
  */
-export const CHECKS = [pages, links, forms, performance, meta];
+export const CHECKS = [pages, links, forms, performance, meta, visual];
+
+/** Whether a check runs with this config (see `enabled` above). */
+export const isEnabled = (check, config) => !check.enabled || check.enabled(config) !== false;

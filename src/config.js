@@ -13,6 +13,8 @@ const DEFAULTS = {
   device: null, // Playwright device name for a mobile run, e.g. "Pixel 7"
   auth: {}, // { storageState, headers, cookies }; basic auth comes from AUTH_USERNAME / AUTH_PASSWORD
   userAgent: 'warden-qa-bot/0.1 (+https://github.com/lumiere042/warden)',
+  // Screenshot diffs against a saved baseline (off by default). threshold: pixelmatch per-pixel; maxDiffPct: % of pixels.
+  visual: { enabled: false, maxPages: 10, fullPage: false, threshold: 0.1, maxDiffPct: 1, viewport: { width: 1280, height: 800 } },
 };
 
 /**
@@ -53,6 +55,7 @@ export function loadConfig({ configPath, siteOverride } = {}) {
     ...raw,
     thresholds,
     exclude,
+    visual: { ...DEFAULTS.visual, ...(raw.visual || {}) },
     sites: sites.map((s) => {
       if (!s.url || !safeOrigin(s.url)) throw new Error(`Invalid site url: ${s.url}`);
       return {
