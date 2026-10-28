@@ -7,10 +7,17 @@ import { runQa } from './run.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const UI = path.join(here, 'web', 'index.html');
+const KEEP_JOBS = 20; // finished jobs kept in memory
+const KEEP_LINES = 2000; // log lines kept per job
+const SECURITY = { 'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer' };
+// Reports contain crawled (possibly hostile) content: never let it run script on this origin.
+const REPORT_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src * data:; sandbox";
 
 /**
  * Local web UI: paste a URL, watch the scan, read the report in the browser.
  * Listens on 127.0.0.1 only. One scan runs at a time.
+ * Every request needs a local Host header (blocks DNS rebinding); state-changing requests must be
+ * application/json from a same-origin page (blocks CSRF from other sites open in the browser).
  */
 export async function startServer({ port = 4173, configPath, outDir, autoScan, log = console.log }) {
   const jobs = new Map();
@@ -22,19 +29,21 @@ export async function startServer({ port = 4173, configPath, outDir, autoScan, l
     if (maxPages) config.sites[0].maxPages = maxPages;
     if (typeof external === 'boolean') config.checkExternalLinks = external;
 
-    const job = { id: String(++seq), url: config.sites[0].url, status: 'running', lines: [], listeners: new Set(), result: null, error: null };
+    const controller = new AbortController();
+    const job = { id: String(++seq), url: config.sites[0].url, status: 'running', lines: [], listeners: new Set(), result: null, error: null, controller };
     const emit = (event, data) => {
       for (const res of job.listeners) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
     const jobLog = (line) => {
       job.lines.push(line);
+      if (job.lines.length > KEEP_LINES) job.lines.splice(0, job.lines.length - KEEP_LINES);
       emit('log', line);
       log(`[${job.id}] ${line}`);
     };
     jobs.set(job.id, job);
     running = job;
 
-    runQa(config, { outDir, ai: ai !== false, email: Boolean(email), log: jobLog })
+    runQa(config, { outDir, ai: ai !== false, email: Boolean(email), log: jobLog, signal: controller.signal })
       .then(({ report, htmlPath, subject, ai: aiResult, emailed }) => {
         const s = report.sites[0];
         job.status = 'done';
@@ -52,6 +61,11 @@ export async function startServer({ port = 4173, configPath, outDir, autoScan, l
         log(`[${job.id}] ${subject}\n[${job.id}] Report: http://localhost:${port}${job.result.reportUrl}`);
       })
       .catch((err) => {
+        if (controller.signal.aborted) {
+          job.status = 'cancelled';
+          emit('cancelled', {});
+          return log(`[${job.id}] Scan cancelled`);
+        }
         job.status = 'error';
         job.error = err.message;
         emit('failed', { error: err.message });
@@ -61,20 +75,38 @@ export async function startServer({ port = 4173, configPath, outDir, autoScan, l
         if (running === job) running = null;
         for (const res of job.listeners) res.end();
         job.listeners.clear();
+        job.controller = null;
+        pruneJobs();
       });
     return job;
   }
 
+  // Map keeps insertion order, so the first finished jobs are the oldest.
+  function pruneJobs() {
+    const finished = [...jobs.values()].filter((j) => j.status !== 'running');
+    for (const j of finished.slice(0, Math.max(0, finished.length - KEEP_JOBS))) jobs.delete(j.id);
+  }
+
+  const localHosts = () => [`localhost:${port}`, `127.0.0.1:${port}`, `[::1]:${port}`];
+
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
     const json = (status, body) => {
-      res.writeHead(status, { 'content-type': 'application/json' });
+      res.writeHead(status, { 'content-type': 'application/json', ...SECURITY });
       res.end(JSON.stringify(body));
     };
 
     try {
+      if (!localHosts().includes(String(req.headers.host).toLowerCase())) return json(403, { error: 'Forbidden host' });
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        const origin = req.headers.origin;
+        if (origin !== undefined && !localHosts().some((h) => origin.toLowerCase() === `http://${h}`)) return json(403, { error: 'Forbidden origin' });
+        const type = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+        if (type !== 'application/json') return json(415, { error: 'Content-Type must be application/json' });
+      }
+
       if (req.method === 'GET' && url.pathname === '/') {
-        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'x-frame-options': 'DENY', ...SECURITY });
         return res.end(fs.readFileSync(UI));
       }
 
@@ -97,6 +129,15 @@ export async function startServer({ port = 4173, configPath, outDir, autoScan, l
         return json(202, { id: job.id, url: job.url });
       }
 
+      const cancel = url.pathname.match(/^\/api\/scan\/(\d+)\/cancel$/);
+      if (req.method === 'POST' && cancel) {
+        const job = jobs.get(cancel[1]);
+        if (!job) return json(404, { error: 'No such scan' });
+        if (job.status !== 'running') return json(409, { error: `Scan is not running (${job.status}).`, status: job.status });
+        job.controller.abort();
+        return json(202, { id: job.id, status: 'cancelling' });
+      }
+
       const scan = url.pathname.match(/^\/api\/scan\/(\d+)(\/events)?$/);
       if (req.method === 'GET' && scan) {
         const job = jobs.get(scan[1]);
@@ -104,11 +145,12 @@ export async function startServer({ port = 4173, configPath, outDir, autoScan, l
         if (!scan[2]) return json(200, { id: job.id, url: job.url, status: job.status, lines: job.lines, result: job.result, error: job.error });
 
         // Server-sent events: replay what's happened so far, then stream the rest.
-        res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive' });
+        res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive', ...SECURITY });
         res.write(`event: start\ndata: ${JSON.stringify({ id: job.id, url: job.url })}\n\n`);
         for (const line of job.lines) res.write(`event: log\ndata: ${JSON.stringify(line)}\n\n`);
         if (job.status === 'done') return res.end(`event: done\ndata: ${JSON.stringify(job.result)}\n\n`);
         if (job.status === 'error') return res.end(`event: failed\ndata: ${JSON.stringify({ error: job.error })}\n\n`);
+        if (job.status === 'cancelled') return res.end('event: cancelled\ndata: {}\n\n');
         job.listeners.add(res);
         req.on('close', () => job.listeners.delete(res));
         return;
@@ -119,13 +161,14 @@ export async function startServer({ port = 4173, configPath, outDir, autoScan, l
         const name = path.basename(decodeURIComponent(file[1]));
         const full = path.join(outDir, name);
         if (!fs.existsSync(full)) return json(404, { error: 'Report not found' });
-        res.writeHead(200, { 'content-type': file[2] === 'html' ? 'text/html; charset=utf-8' : 'application/json' });
+        const type = file[2] === 'html' ? { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': REPORT_CSP } : { 'content-type': 'application/json' };
+        res.writeHead(200, { ...type, ...SECURITY });
         return res.end(fs.readFileSync(full));
       }
 
       json(404, { error: 'Not found' });
     } catch (err) {
-      json(500, { error: err.message });
+      json(err.status || 500, { error: err.message });
     }
   });
 
@@ -183,9 +226,16 @@ async function readJson(req) {
   let body = '';
   for await (const chunk of req) {
     body += chunk;
-    if (body.length > 10000) throw new Error('Request too large');
+    if (body.length > 10000) throw Object.assign(new Error('Request too large'), { status: 413 });
   }
-  return body ? JSON.parse(body) : {};
+  let data;
+  try {
+    data = body ? JSON.parse(body) : {};
+  } catch {
+    throw Object.assign(new Error('Invalid JSON'), { status: 400 });
+  }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) throw Object.assign(new Error('Expected a JSON object'), { status: 400 });
+  return data;
 }
 
 function clampInt(v, min, max) {

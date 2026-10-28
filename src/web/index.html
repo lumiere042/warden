@@ -49,6 +49,8 @@
   .progress .top b { font-family: var(--display); font-size: 22px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .spin { width: 22px; height: 22px; border: 4px solid #c9d2ff; border-top-color: var(--blue); border-radius: 50%; animation: spin .8s linear infinite; flex: none; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  .progress .cancel { margin-left: auto; flex: none; }
+  .progress .cancel:disabled { opacity: .5; cursor: wait; }
   .bar { height: 14px; border: 3px solid var(--ink); border-radius: 999px; overflow: hidden; background: var(--soft); }
   .bar div { height: 100%; width: 0; background: var(--blue); transition: width .4s ease; }
   .step { margin-top: 10px; color: var(--muted); font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -199,7 +201,7 @@
   </form>
 
   <section id="progress" class="card progress hidden">
-    <div class="top"><div class="spin" id="spin"></div><b id="progTitle">Starting…</b></div>
+    <div class="top"><div class="spin" id="spin"></div><b id="progTitle">Starting…</b><button id="cancel" class="chipbtn cancel hidden" type="button">Cancel</button></div>
     <div class="bar"><div id="barFill"></div></div>
     <div class="step" id="step">Launching browser…</div>
     <details class="log"><summary>Show log</summary><pre id="log"></pre></details>
@@ -273,11 +275,15 @@
     watch(data.id, data.url);
   });
 
+  let watching = null;
   function watch(id, url) {
     source?.close();
+    watching = id;
     $('go').disabled = true;
     $('progress').classList.remove('hidden');
     $('spin').classList.remove('hidden');
+    $('cancel').classList.remove('hidden');
+    $('cancel').disabled = false;
     $('progTitle').textContent = `Checking ${url}`;
     $('step').textContent = 'Launching browser…';
     $('log').textContent = '';
@@ -286,7 +292,15 @@
     source.addEventListener('log', (e) => onLine(JSON.parse(e.data)));
     source.addEventListener('done', (e) => { source.close(); finish(JSON.parse(e.data)); });
     source.addEventListener('failed', (e) => { source.close(); fail(JSON.parse(e.data).error); });
+    source.addEventListener('cancelled', () => { source.close(); stopped('Scan cancelled', 'Stopped before the report was finished.'); });
   }
+
+  $('cancel').addEventListener('click', async () => {
+    $('cancel').disabled = true;
+    step('Cancelling…');
+    const res = await fetch(`/api/scan/${watching}/cancel`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    if (!res.ok && res.status !== 409) { $('cancel').disabled = false; step((await res.json()).error); }
+  });
 
   function onLine(line) {
     $('log').textContent += line + '\n';
@@ -304,16 +318,19 @@
   async function finish(r) {
     setBar(100);
     $('go').disabled = false;
+    $('cancel').classList.add('hidden');
     $('progress').classList.add('hidden');
     const s = await (await fetch('/api/status')).json();
     renderRecent(s.reports);
     await openReport({ url: r.reportUrl, jsonUrl: r.reportJsonUrl }, true);
   }
 
-  function fail(message) {
+  const fail = (message) => stopped('Scan failed', message);
+  function stopped(title, message) {
     $('go').disabled = false;
     $('spin').classList.add('hidden');
-    $('progTitle').textContent = 'Scan failed';
+    $('cancel').classList.add('hidden');
+    $('progTitle').textContent = title;
     step(message);
   }
 
