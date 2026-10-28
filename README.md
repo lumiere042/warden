@@ -1,6 +1,6 @@
 
 
-https://github.com/user-attachments/assets/9057fd67-e463-4cc5-8122-cc8eaf1e2a4e
+
 
 # Warden
 
@@ -15,6 +15,10 @@ Automated QA for any website. Paste a link and Warden crawls the site in a real 
 **No server or account needed.** It runs on your own computer, or free on GitHub Actions, and only when you start it.
 
 ---
+
+
+https://github.com/user-attachments/assets/297c024a-6594-4b5f-aeab-95fa4d0593cc
+
 
 ## Three ways to run it
 
