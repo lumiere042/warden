@@ -1,7 +1,7 @@
 {
   "name": "website-qa",
   "version": "0.1.0",
-  "description": "Nightly automated QA for websites: broken links, missing meta tags, slow pages and broken forms, emailed as a morning report.",
+  "description": "On-demand website QA: broken links, missing meta tags, slow pages and broken forms, emailed as an HTML report.",
   "type": "module",
   "bin": {
     "website-qa": "src/cli.js"

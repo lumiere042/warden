@@ -16,7 +16,7 @@ const BUILT_IN = {
 const KEY_REQUIRED = new Set(['openai', 'gemini']);
 
 /**
- * Optional AI summary of the night's findings. Never throws: if the AI isn't configured
+ * Optional AI summary of this run's findings. Never throws: if the AI isn't configured
  * or the call fails, the report goes out without it.
  * Returns { text, provider, model } or { skipped: reason }.
  */

@@ -63,7 +63,7 @@ export function saveReport(dir, report, html) {
   const htmlPath = path.join(dir, `${stamp}.html`);
   fs.writeFileSync(htmlPath, html);
   fs.writeFileSync(path.join(dir, `${stamp}.json`), JSON.stringify(report, null, 2));
-  // Only what's needed for tomorrow's new/fixed diff.
+  // Only what's needed for the next run's new/fixed diff.
   const last = { generatedAt: report.generatedAt, issues: report.sites.flatMap((s) => s.issues.map(({ id, check, page, message, severity }) => ({ id, check, page, message, severity }))) };
   fs.writeFileSync(path.join(dir, 'last.json'), JSON.stringify(last, null, 2));
   return htmlPath;

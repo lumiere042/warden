@@ -14,7 +14,7 @@ import { renderHtml } from './report/html.js';
 import { summarize } from './ai/summarize.js';
 import { sendEmail } from './email/send.js';
 
-const HELP = `website-qa — nightly QA for websites
+const HELP = `website-qa — automated QA for websites
 
 Usage: npm run qa -- [options]
 

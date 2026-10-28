@@ -1,9 +1,8 @@
-name: Nightly QA
+name: Run QA
 
+# Runs only when you start it: Actions tab → Run QA → Run workflow.
+# Want it automatic? See "Run it on a schedule (optional)" in the README.
 on:
-  schedule:
-    # 06:00 UTC every day. GitHub cron is always UTC - see README to convert to your timezone.
-    - cron: '0 6 * * *'
   workflow_dispatch:
     inputs:
       site:
@@ -14,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: nightly-qa
+  group: website-qa
   cancel-in-progress: false
 
 jobs:
@@ -34,7 +33,7 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      # Last night's results, so the report can say what's new and what got fixed.
+      # The previous run's results, so the report can say what's new and what got fixed.
       - name: Restore previous results
         uses: actions/cache/restore@v4
         with:
@@ -72,7 +71,7 @@ jobs:
           retention-days: 30
           if-no-files-found: ignore
 
-      - name: Save results for tomorrow
+      - name: Save results for next run
         if: always() && hashFiles('reports/last.json') != ''
         uses: actions/cache/save@v4
         with:

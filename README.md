@@ -1,6 +1,6 @@
 # website-qa
 
-Nightly automated QA for any website, with a report in your inbox each morning:
+Automated QA for any website, with the report emailed to you whenever you run it:
 
 - **Broken links**: internal pages, images, scripts, stylesheets and (optionally) external links
 - **Missing or weak meta tags**: title, description, canonical, viewport, `lang`, H1s, Open Graph, duplicates, accidental `noindex`
@@ -8,7 +8,7 @@ Nightly automated QA for any website, with a report in your inbox each morning:
 - **Forms that don't submit**: fills in your forms and checks they really send, without spamming your inbox
 - **AI summary (optional)**: a plain-English "fix these first" briefing from **the AI of your choice** (Claude, OpenAI, Gemini, a local model, or your own adapter)
 
-**No server needed.** You can run it on your own computer, or let GitHub Actions run it for free every night.
+**No server needed.** Run it on your own computer, or with one click on GitHub Actions, for free. It runs only when you start it, and you can [add a schedule](#run-it-on-a-schedule-optional) if you want it automatic.
 
 ---
 
@@ -23,7 +23,7 @@ Nightly automated QA for any website, with a report in your inbox each morning:
                                                                └─ forms:  fill + submit in a real browser
 ```
 
-The scanning itself is plain, predictable code, so it runs the same way every night. The AI only writes the summary at the top of the email: it reads the findings and explains what matters most. Leave the AI out and everything else still works.
+The scanning itself is plain, predictable code, so every run works the same way. The AI only writes the summary at the top of the email: it reads the findings and explains what matters most. Leave the AI out and everything else still works.
 
 Each run also compares with the previous one, so the email marks issues as **NEW** and lists what got **fixed**.
 
@@ -53,7 +53,7 @@ npm run fixture                                                       # terminal
 npm run qa -- --config test/fixture-site/qa.config.json --no-email    # terminal 2
 ```
 
-## Run it nightly on GitHub (free, no server)
+## Run it on GitHub (free, no server)
 
 1. Click **Use this template**, or fork this repo. A private repo is fine.
 2. Edit `qa.config.json` in your copy and put in your site URL and forms. If you'd rather not commit your URL, add a `SITE_URL` secret instead (step 3).
@@ -69,11 +69,36 @@ npm run qa -- --config test/fixture-site/qa.config.json --no-email    # terminal
    | `SITE_URL` | optional | `https://yoursite.com` (instead of committing qa.config.json) |
    | AI keys | optional | see [Choose your AI](#choose-your-ai) |
 
-4. Open the **Actions** tab and enable workflows (forks start with them turned off). Then pick **Nightly QA → Run workflow** to test it straight away.
+4. Open the **Actions** tab and enable workflows (forks start with them turned off).
+5. Whenever you want a report, go to **Actions → Run QA → Run workflow**. You can type a different URL in the box to check another site just once.
 
-From then on it runs every day at 06:00 UTC. To change the time, edit the `cron` line in `.github/workflows/nightly-qa.yml`. For example, `0 13 * * *` is 06:00 in California (PDT) and `0 22 * * *` is 06:00 in Manila. Each run's full report is also saved as a downloadable artifact on its run page.
+The report arrives by email a few minutes later. Each run's full report is also saved as a downloadable artifact on its run page. Timings are measured from GitHub's US servers, so use them to spot trends rather than as what every visitor sees.
 
-> **Good to know about GitHub's scheduler:** runs can start 5–30 minutes late at busy times. On **public** repos, GitHub pauses scheduled workflows after 60 days with no commits; re-enable it from the Actions tab, or push any commit. Timings are measured from GitHub's US servers, so use them to spot trends rather than as what every visitor sees.
+## Run it on a schedule (optional)
+
+It never runs by itself unless you add a schedule. Pick whichever matches how you run it.
+
+**On GitHub:** add a `schedule` to the `on:` section of `.github/workflows/qa.yml` and commit:
+
+```yaml
+on:
+  workflow_dispatch:
+    # ...keep what's already here...
+  schedule:
+    - cron: '30 23 * * 0-4'   # 07:30 Manila time (UTC+8), Monday–Friday
+```
+
+GitHub cron times are always **UTC**, so convert from your timezone first. [crontab.guru](https://crontab.guru) helps you build the line. Runs can start 5–30 minutes late when GitHub is busy. On public repos, GitHub pauses schedules after 60 days with no commits; re-enable them from the Actions tab.
+
+**On your computer** (the computer has to be on at that time):
+
+```bash
+# macOS / Linux: run `crontab -e` and add (local time, 07:30 Mon–Fri):
+30 7 * * 1-5  cd /path/to/website-qa && npm run qa
+
+# Windows (Command Prompt), 07:30 every day:
+schtasks /create /tn "website-qa" /sc daily /st 07:30 /tr "cmd /c cd /d C:\path\to\website-qa && npm run qa"
+```
 
 ---
 
@@ -156,7 +181,7 @@ export const defaultModel = 'my-model';   // optional
 
 export async function complete({ system, prompt, model, apiKey, baseUrl, maxTokens }) {
   // system = contents of prompts/summary.md
-  // prompt = the night's findings as JSON
+  // prompt = this run's findings as JSON
   const res = await fetch('https://my-llm.example.com/generate', {
     method: 'POST',
     headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
