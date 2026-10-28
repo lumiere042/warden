@@ -427,6 +427,7 @@
         tile(c.critical, 'Critical', 'var(--coral)'), tile(c.warning, 'Warnings', 'var(--amber)'),
         tile(c.new, 'New', 'var(--blue)'), tile(s.fixed.length, 'Fixed', 'var(--mint-ink)'),
         tile(s.pagesCrawled, 'Pages'), tile(s.linksChecked, 'Links checked'));
+      const ignored = c.ignored ? el('p', { class: 'lead', style: 'margin:12px 0 0;font-size:13px', text: `${plural(c.ignored, 'issue')} ignored by config` }) : null;
       const ai = view.report.ai ? el('div', { class: 'ai' },
         el('div', { class: 'k', text: `AI summary · ${view.report.ai.provider} / ${view.report.ai.model}` }),
         view.report.ai.text.split(/\r?\n/).filter((l) => l.trim()).map((l) => /^\s*[-*•]\s+/.test(l)
@@ -441,7 +442,7 @@
       };
       const cards = checkNames(s).map((name) => CARDS[name] ? CARDS[name]() : catCard(checkTitle(s, name), `check:${name}`, issues(name), (i) => [where(i), i.message]));
       const clear = c.critical + c.warning === 0 ? el('p', { class: 'allclear', text: '✓ All clear. No problems found.' }) : null;
-      return el('div', {}, tiles, ai, clear, el('div', { class: 'catgrid' }, cards),
+      return el('div', {}, tiles, ignored, ai, clear, el('div', { class: 'catgrid' }, cards),
         t ? el('p', { class: 'lead', style: 'margin-top:16px', text: `Speed limits: load ${fmtMs(t.loadMs)}, LCP ${fmtMs(t.lcpMs)}, page weight ${fmtKb(t.pageWeightKb)}${t.clsScore != null ? `, layout shift (CLS) ${fmtCls(t.clsScore)}` : ''}.` }) : null);
     },
 
@@ -642,6 +643,14 @@
     'canonical': ['Missing canonical link', 'Tells search engines which URL is the main version.'],
     'viewport': ['Missing viewport tag', 'Without it, the page won\'t scale on phones.'],
     'lang': ['Missing <html lang>', 'Helps screen readers and translation.'],
+    'canonical-other': ['Canonical points elsewhere', 'Search engines will index the other URL instead of this page.'],
+    'canonical-broken': ['Canonical points to a broken page', 'Search engines are told to index a page that doesn\'t load.'],
+    'canonical-cross-site': ['Canonical points to another site', 'This page hands its search ranking to a different domain.'],
+    'canonical-invalid': ['Invalid canonical link', 'The canonical URL can\'t be read.'],
+    'img-alt': ['Images without alt', 'Image search and screen readers rely on alt text.'],
+    'hreflang-invalid': ['Invalid hreflang codes', 'Use language codes like en, en-GB or x-default.'],
+    'hreflang-self': ['hreflang missing self-reference', 'Each language version should list itself too.'],
+    'favicon': ['No favicon', 'Shown in browser tabs, bookmarks and some search results.'],
   };
   function metaGroups(list) {
     const groups = new Map();
@@ -649,7 +658,7 @@
       const key = i.key.split(':')[0];
       if (!groups.has(key)) {
         const [label, hint] = META[key] || [key, ''];
-        groups.set(key, { key, label, hint, items: [], severity: 'warning', dup: key.startsWith('duplicate-'), showMsg: /length|open-graph|h1-multiple/.test(key) });
+        groups.set(key, { key, label, hint, items: [], severity: 'warning', dup: key.startsWith('duplicate-'), showMsg: /length|open-graph|h1-multiple|canonical-|img-alt|hreflang/.test(key) });
       }
       const g = groups.get(key);
       g.items.push(i);

@@ -74,7 +74,7 @@ function siteBlock(s, maxRows) {
   return `<tr><td style="padding:16px 24px 0;">
   <div style="font-size:17px;font-weight:600;border-top:1px solid ${C.border};padding-top:16px;"><a href="${e(s.url)}" style="color:${C.text};text-decoration:none;">${e(new URL(s.url).host)}</a></div>
   <div style="font-size:13px;color:${C.muted};margin:4px 0 12px;">${s.pagesCrawled} pages crawled · ${s.linksChecked} links checked</div>
-  ${stats(s)}
+  ${stats(s)}${s.counts.ignored ? `\n  <div style="font-size:12px;color:${C.muted};margin-top:8px;">${s.counts.ignored} issue${s.counts.ignored === 1 ? '' : 's'} ignored by config</div>` : ''}
 </td></tr>
 ${sections.join('\n')}
 ${fixedSection(s, maxRows)}`;
