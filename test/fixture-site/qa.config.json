@@ -7,7 +7,11 @@
         { "page": "/contact", "selector": "form#contact", "mode": "intercept", "fields": { "#email": "qa@example.com", "#message": "hello from qa" } },
         { "page": "/contact", "selector": "form#contact", "mode": "submit", "successText": "Thanks, we got your message", "fields": { "#email": "qa@example.com" } },
         { "page": "/contact", "selector": "form#broken", "mode": "submit", "fields": { "#name": "QA" } },
-        { "page": "/contact", "selector": "form#required", "mode": "intercept" }
+        { "page": "/contact", "selector": "form#required", "mode": "intercept" },
+        { "page": "/tracked", "selector": "form#tracked-broken", "mode": "intercept", "fields": { "#tb-email": "qa@example.com" } },
+        { "page": "/tracked", "selector": "form#tracked-broken", "mode": "submit", "fields": { "#tb-email": "qa@example.com" } },
+        { "page": "/tracked", "selector": "form#tracked", "mode": "intercept", "fields": { "#t-email": "qa@example.com", "#plan-pro": false } },
+        { "page": "/tracked", "selector": "form#tracked", "mode": "submit", "fields": { "#t-email": "qa@example.com" } }
       ]
     }
   ],

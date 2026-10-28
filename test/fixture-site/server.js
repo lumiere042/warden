@@ -49,6 +49,38 @@ const pages = {
        });
      </script>
      </body></html>`,
+  // Analytics fires on click for both forms. #tracked-broken never actually submits; #tracked does.
+  // The "third-party" beacon goes to the other of localhost/127.0.0.1, so it's a different site.
+  '/tracked': () =>
+    head('Fixture Site — Tracked Forms', goodMeta('/tracked', 'Forms that fire analytics beacons on submit, one broken and one working.')) +
+    `<h1>Tracked forms</h1>
+     <form id="tracked-broken" action="/api/signup" method="post">
+       <input id="tb-email" name="email" type="email">
+       <button type="submit">Sign up</button>
+     </form>
+     <form id="tracked" action="/api/signup" method="post">
+       <input id="t-email" name="email" type="email">
+       <label><input id="plan-free" name="plan" type="radio" value="free" checked> Free</label>
+       <label><input id="plan-pro" name="plan" type="radio" value="pro"> Pro</label>
+       <button type="submit">Sign up</button>
+     </form>
+     <p id="signed-up" hidden>You're signed up</p>
+     <script>
+       const thirdParty = location.protocol + '//' + (location.hostname === 'localhost' ? '127.0.0.1' : 'localhost') + ':' + location.port;
+       const track = () => {
+         navigator.sendBeacon(thirdParty + '/g/collect?en=form_submit', 'v=2');
+         fetch(thirdParty + '/tr?ev=Lead', { method: 'POST', mode: 'no-cors', body: 'x' }).catch(() => {});
+       };
+       document.getElementById('tracked-broken').addEventListener('submit', (e) => { e.preventDefault(); track(); });
+       document.getElementById('tracked').addEventListener('submit', async (e) => {
+         e.preventDefault();
+         track();
+         navigator.sendBeacon('/collect', 'same-site analytics');
+         const res = await fetch('/api/signup', { method: 'POST', body: new URLSearchParams(new FormData(e.target)) });
+         if (res.ok) document.getElementById('signed-up').hidden = false;
+       });
+     </script>
+     </body></html>`,
 };
 
 export function createServer() {
@@ -64,6 +96,9 @@ export function createServer() {
       for await (const _ of req);
       if (p === '/api/contact') return send(200, '{"ok":true}', 'application/json');
       if (p === '/api/broken') return send(500, 'Internal Server Error', 'text/plain');
+      if (p === '/api/signup') return send(200, '{"ok":true}', 'application/json');
+      if (p === '/collect') return send(204, '');
+      // anything else (incl. the fake third-party /g/collect and /tr beacons) is a 404
       return send(404, 'not found', 'text/plain');
     }
     if (p === '/sitemap.xml') {
