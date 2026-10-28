@@ -15,11 +15,11 @@ const REPORT_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src * dat
 
 /**
  * Local web UI: paste a URL, watch the scan, read the report in the browser.
- * Listens on 127.0.0.1 only. One scan runs at a time.
+ * Listens on 127.0.0.1 unless `host` says otherwise (Docker). One scan runs at a time.
  * Every request needs a local Host header (blocks DNS rebinding); state-changing requests must be
  * application/json from a same-origin page (blocks CSRF from other sites open in the browser).
  */
-export async function startServer({ port = 4173, configPath, outDir, autoScan, log = console.log }) {
+export async function startServer({ port = 4173, host = '127.0.0.1', configPath, outDir, autoScan, log = console.log }) {
   const jobs = new Map();
   let running = null;
   let seq = 0;
@@ -88,6 +88,10 @@ export async function startServer({ port = 4173, configPath, outDir, autoScan, l
   }
 
   const localHosts = () => [`localhost:${port}`, `127.0.0.1:${port}`, `[::1]:${port}`];
+  // Bound to a non-loopback address (Docker -p 8080:4173): the browser's port can differ from ours,
+  // so accept loopback names on any port. Still blocks DNS rebinding, which needs a foreign hostname.
+  const loopbackBound = /^(localhost|127\.\d+\.\d+\.\d+|::1)$/i.test(host);
+  const hostAllowed = (h) => localHosts().includes(h) || (!loopbackBound && /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(h));
 
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
@@ -97,10 +101,11 @@ export async function startServer({ port = 4173, configPath, outDir, autoScan, l
     };
 
     try {
-      if (!localHosts().includes(String(req.headers.host).toLowerCase())) return json(403, { error: 'Forbidden host' });
+      const reqHost = String(req.headers.host).toLowerCase();
+      if (!hostAllowed(reqHost)) return json(403, { error: 'Forbidden host' });
       if (req.method !== 'GET' && req.method !== 'HEAD') {
         const origin = req.headers.origin;
-        if (origin !== undefined && !localHosts().some((h) => origin.toLowerCase() === `http://${h}`)) return json(403, { error: 'Forbidden origin' });
+        if (origin !== undefined && origin.toLowerCase() !== `http://${reqHost}`) return json(403, { error: 'Forbidden origin' });
         const type = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
         if (type !== 'application/json') return json(415, { error: 'Content-Type must be application/json' });
       }
@@ -174,7 +179,7 @@ export async function startServer({ port = 4173, configPath, outDir, autoScan, l
 
   await new Promise((resolve, reject) => {
     server.once('error', reject);
-    server.listen(port, '127.0.0.1', resolve);
+    server.listen(port, host, resolve);
   });
   const actualPort = server.address().port;
   port = actualPort;
