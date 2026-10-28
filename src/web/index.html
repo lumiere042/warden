@@ -8,36 +8,43 @@
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --ink: #141414; --muted: #666; --line: #e6e6e6; --soft: #f4f5f8; --bg: #ffffff;
-    --blue: #3d5afe; --coral: #ff5d5d; --yellow: #ffd23f; --mint: #1fd19b; --amber: #d49a00;
+    --ink: #141414; --muted: #6b6b6b; --line: #e7e7e7; --soft: #f4f5f8; --bg: #ffffff;
+    --blue: #3d5afe; --blue-soft: #e9ecff; --coral: #ff5d5d; --coral-soft: #ffe6e6; --yellow: #ffd23f;
+    --mint: #1fd19b; --mint-ink: #0f8f69; --mint-soft: #dcf8ef; --amber: #c48a00; --amber-soft: #fff3cf;
     --display: 'Fredoka', ui-rounded, 'Segoe UI', system-ui, sans-serif;
     --body: 'Nunito', 'Segoe UI', system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-weight: 700; }
-  .wrap { max-width: 1040px; margin: 0 auto; padding: 28px 16px 64px; }
-  header { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
-  header h1 { font-family: var(--display); font-size: 34px; margin: 0; letter-spacing: -0.5px; }
+  a { color: var(--blue); }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 24px 16px 64px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+  header h1 { font-family: var(--display); font-size: 32px; margin: 0; letter-spacing: -0.5px; }
   header .tag { margin-left: auto; font-size: 13px; color: var(--muted); border: 2px solid var(--line); border-radius: 999px; padding: 4px 12px; }
-  .card { background: #fff; border: 3px solid var(--ink); border-radius: 20px; box-shadow: 6px 6px 0 var(--ink); padding: 24px; }
-  .hero h2 { font-family: var(--display); font-size: 30px; margin: 0 0 6px; }
-  .hero p { margin: 0 0 18px; color: var(--muted); }
+  .card { background: #fff; border: 3px solid var(--ink); border-radius: 20px; box-shadow: 6px 6px 0 var(--ink); padding: 22px; }
+  .hidden { display: none !important; }
+  section { margin-top: 24px; }
+
+  /* scan form */
+  .hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 24px; align-items: end; }
+  .hero h2 { font-family: var(--display); font-size: 28px; margin: 0; }
+  .hero p { margin: 0; color: var(--muted); }
   .hl { background: linear-gradient(transparent 58%, var(--yellow) 58%, var(--yellow) 90%, transparent 90%); }
-  .scanrow { display: flex; gap: 12px; flex-wrap: wrap; }
-  .scanrow input { flex: 1 1 320px; min-width: 0; font: 700 20px var(--body); padding: 14px 18px; border: 3px solid var(--ink); border-radius: 14px; outline: none; }
+  .scanrow { grid-column: 1 / -1; display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+  .scanrow input { flex: 1 1 320px; min-width: 0; font: 700 19px var(--body); padding: 13px 18px; border: 3px solid var(--ink); border-radius: 14px; outline: none; }
   .scanrow input:focus { box-shadow: 0 0 0 4px #c9d2ff; }
-  button { font: 700 20px var(--display); background: var(--blue); color: #fff; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 4px 4px 0 var(--ink); padding: 12px 26px; cursor: pointer; transition: transform .08s, box-shadow .08s; }
-  button:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
-  button:disabled { background: #9aa6e8; cursor: wait; }
-  .opts { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 16px; font-size: 15px; color: #333; }
+  button { font-family: var(--display); cursor: pointer; }
+  .go { font: 700 20px var(--display); background: var(--blue); color: #fff; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 4px 4px 0 var(--ink); padding: 11px 28px; transition: transform .08s, box-shadow .08s; }
+  .go:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+  .go:disabled { background: #9aa6e8; cursor: wait; }
+  .opts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 12px; font-size: 15px; color: #333; }
   .opts label { display: inline-flex; align-items: center; gap: 8px; }
   .opts input[type=number] { width: 72px; font: 700 15px var(--body); padding: 4px 8px; border: 2px solid var(--ink); border-radius: 8px; }
   .opts input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--blue); }
   .opts .off { color: #aaa; }
-  .err { margin-top: 14px; color: var(--coral); font-size: 15px; }
-  section { margin-top: 26px; }
-  .hidden { display: none !important; }
+  .err { grid-column: 1 / -1; margin-top: 10px; color: var(--coral); font-size: 15px; }
 
+  /* progress */
   .progress .top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
   .progress .top b { font-family: var(--display); font-size: 22px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .spin { width: 22px; height: 22px; border: 4px solid #c9d2ff; border-top-color: var(--blue); border-radius: 50%; animation: spin .8s linear infinite; flex: none; }
@@ -45,47 +52,142 @@
   .bar { height: 14px; border: 3px solid var(--ink); border-radius: 999px; overflow: hidden; background: var(--soft); }
   .bar div { height: 100%; width: 0; background: var(--blue); transition: width .4s ease; }
   .step { margin-top: 10px; color: var(--muted); font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  details { margin-top: 12px; font-size: 14px; }
-  details summary { cursor: pointer; color: var(--muted); }
+  details.log { margin-top: 12px; font-size: 14px; }
+  details.log summary { cursor: pointer; color: var(--muted); }
   pre { margin: 8px 0 0; max-height: 220px; overflow: auto; background: var(--soft); border-radius: 12px; padding: 12px; font: 600 12.5px ui-monospace, Consolas, monospace; white-space: pre-wrap; word-break: break-all; }
 
-  .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 4px 0 16px; }
-  .tile { border: 3px solid var(--ink); border-radius: 16px; box-shadow: 4px 4px 0 var(--ink); text-align: center; padding: 12px 6px; background: #fff; }
-  .tile .n { font: 700 34px var(--display); line-height: 1.1; }
-  .tile .l { font-size: 11px; letter-spacing: 1.2px; color: var(--muted); text-transform: uppercase; }
-  .result-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
-  .result-head h3 { font-family: var(--display); font-size: 22px; margin: 0; flex: 1 1 300px; }
-  .link { font: 600 16px var(--display); color: var(--ink); text-decoration: none; border: 3px solid var(--ink); border-radius: 999px; padding: 6px 16px; background: var(--yellow); box-shadow: 3px 3px 0 var(--ink); white-space: nowrap; }
-  iframe { width: 100%; height: 900px; border: 3px solid var(--ink); border-radius: 16px; background: #f6f8fa; display: block; }
+  /* results */
+  .res-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-bottom: 16px; }
+  .res-head .site { font-family: var(--display); font-size: 28px; font-weight: 700; }
+  .res-head .when { color: var(--muted); font-size: 15px; }
+  .res-head .actions { margin-left: auto; display: flex; gap: 10px; flex-wrap: wrap; }
+  .chipbtn { font: 600 15px var(--display); color: var(--ink); text-decoration: none; border: 3px solid var(--ink); border-radius: 999px; padding: 5px 14px; background: #fff; box-shadow: 3px 3px 0 var(--ink); white-space: nowrap; }
+  .chipbtn.yellow { background: var(--yellow); }
+  select.chipbtn { padding-right: 10px; }
+  .res-body { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 22px; align-items: start; }
+  nav.cats { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 8px; }
+  nav.cats button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; font: 600 17px var(--display); color: var(--ink); background: #fff; border: 3px solid var(--ink); border-radius: 14px; padding: 10px 12px; box-shadow: 3px 3px 0 var(--ink); }
+  nav.cats button[aria-selected=true] { background: var(--ink); color: #fff; }
+  nav.cats .count { margin-left: auto; font: 700 14px var(--body); min-width: 30px; text-align: center; border-radius: 999px; padding: 2px 8px; border: 2px solid currentColor; }
+  .count.crit { background: var(--coral); color: #fff; border-color: var(--ink) !important; }
+  .count.warn { background: var(--yellow); color: var(--ink); border-color: var(--ink) !important; }
+  .count.ok { background: var(--mint); color: var(--ink); border-color: var(--ink) !important; }
+  .panel { min-width: 0; }
+  .panel h3 { font-family: var(--display); font-size: 24px; margin: 0 0 4px; }
+  .panel .lead { color: var(--muted); margin: 0 0 16px; font-size: 15px; }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .tile { border: 3px solid var(--ink); border-radius: 16px; box-shadow: 4px 4px 0 var(--ink); padding: 12px 14px; background: #fff; }
+  .tile .n { font: 700 32px var(--display); line-height: 1.1; }
+  .tile .l { font-size: 12px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
+  .tile .s { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  .ai { background: var(--blue-soft); border: 3px solid var(--ink); border-radius: 16px; padding: 16px 18px; margin-bottom: 18px; line-height: 1.55; }
+  .ai .k { font: 700 13px var(--display); letter-spacing: 1px; color: var(--blue); text-transform: uppercase; margin-bottom: 6px; }
+  .ai .b { padding-left: 16px; text-indent: -12px; }
+
+  .catgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 14px; }
+  .catcard { border: 3px solid var(--ink); border-radius: 16px; padding: 14px 16px; background: #fff; display: flex; flex-direction: column; gap: 8px; }
+  .catcard .t { display: flex; align-items: center; gap: 10px; font: 700 19px var(--display); }
+  .catcard .t .count { margin-left: auto; font: 700 13px var(--body); border-radius: 999px; padding: 2px 9px; border: 2px solid var(--ink); }
+  .catcard ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; font-size: 14px; }
+  .catcard li { display: flex; gap: 8px; min-width: 0; }
+  .catcard li .p { color: var(--muted); flex: 0 1 auto; max-width: 62%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .catcard li .m { flex: 1 0 auto; max-width: 100%; }
+  .catcard li .m { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .catcard .more { margin-top: auto; align-self: flex-start; font: 600 15px var(--display); background: none; border: none; color: var(--blue); padding: 0; }
+  .allclear { font: 600 18px var(--display); color: var(--mint-ink); }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+  .toolbar input[type=search] { flex: 1 1 240px; min-width: 0; font: 700 15px var(--body); padding: 8px 14px; border: 3px solid var(--ink); border-radius: 12px; outline: none; }
+  .filter { font: 600 14px var(--display); border: 2px solid var(--ink); border-radius: 999px; padding: 4px 12px; background: #fff; color: var(--ink); }
+  .filter[aria-pressed=true] { background: var(--ink); color: #fff; }
+
+  .tbl { width: 100%; border-collapse: separate; border-spacing: 0; border: 3px solid var(--ink); border-radius: 16px; overflow: hidden; font-size: 14.5px; background: #fff; }
+  .tbl th { text-align: left; font: 700 12px var(--body); letter-spacing: 1px; text-transform: uppercase; color: var(--muted); background: var(--soft); padding: 10px 12px; border-bottom: 2px solid var(--line); white-space: nowrap; }
+  .tbl td { padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .tbl tr:last-child td { border-bottom: none; }
+  .tbl .url { max-width: 0; width: 46%; }
+  .tbl .url a, .tbl .ell { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tbl .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .tbl .num.bad { color: #d62f2f; } .tbl .num.meh { color: var(--amber); }
+  .badge { display: inline-block; font: 700 12.5px var(--body); border-radius: 8px; padding: 2px 8px; border: 2px solid var(--ink); white-space: nowrap; }
+  .badge.crit { background: var(--coral-soft); } .badge.warn { background: var(--amber-soft); } .badge.ok { background: var(--mint-soft); }
+  .new { font: 700 11px var(--body); color: var(--blue); border: 2px solid var(--blue); border-radius: 999px; padding: 0 6px; margin-left: 6px; vertical-align: 1px; }
+  /* one-line cells: link (ellipsis) + inline NEW badge / "+N more" */
+  .cell { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+  .cell > a { min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cell > .new { margin-left: 0; flex: none; }
+  .found details { display: inline-block; vertical-align: top; }
+  .found details summary { cursor: pointer; color: var(--blue); list-style: none; white-space: nowrap; }
+  .found details summary::-webkit-details-marker { display: none; }
+  .found .list { display: grid; gap: 2px; margin-top: 4px; }
+  .pager { display: flex; align-items: center; gap: 10px; justify-content: flex-end; margin-top: 10px; font-size: 14px; color: var(--muted); }
+  .pager button { font: 600 14px var(--display); border: 2px solid var(--ink); background: #fff; border-radius: 10px; padding: 3px 12px; }
+  .pager button:disabled { opacity: .35; cursor: default; }
+
+  .groups { display: grid; gap: 10px; }
+  .group { border: 3px solid var(--ink); border-radius: 16px; background: #fff; overflow: hidden; }
+  .group > button { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: #fff; border: none; padding: 12px 16px; color: var(--ink); }
+  .group > button:hover { background: var(--soft); }
+  .group .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; border: 2px solid var(--ink); }
+  .group .gl { font: 600 18px var(--display); }
+  .group .gh { font: 700 13.5px var(--body); color: var(--muted); }
+  .group .gc { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
+  .group .chev { transition: transform .15s; font-size: 14px; }
+  .group.open .chev { transform: rotate(90deg); }
+  .group .gbody { display: none; border-top: 2px solid var(--line); padding: 12px 16px; }
+  .group.open .gbody { display: block; }
+  .pagegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 6px 18px; font-size: 14px; }
+  .pagegrid div { display: flex; gap: 8px; min-width: 0; }
+  .pagegrid a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pagegrid .note { color: var(--muted); white-space: nowrap; }
+  .dup { padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .dup:last-child { border-bottom: none; }
+  .dup q { font-weight: 800; }
+
+  .formgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .formcard { border: 3px solid var(--ink); border-radius: 16px; padding: 14px 16px; background: #fff; display: grid; gap: 6px; font-size: 14.5px; }
+  .formcard.fail { background: #fff7f7; }
+  .formcard .top { display: flex; align-items: center; gap: 10px; }
+  .formcard .sel { color: var(--muted); font-size: 13.5px; }
+  .h4 { font: 700 18px var(--display); margin: 18px 0 8px; }
+  .empty { color: var(--muted); font-size: 15px; }
+  .hint { background: var(--soft); border-radius: 14px; padding: 14px 16px; font-size: 14.5px; color: #444; }
+  code { font: 600 13px ui-monospace, Consolas, monospace; background: var(--soft); padding: 1px 6px; border-radius: 6px; }
 
   .recent h3 { font-family: var(--display); font-size: 20px; margin: 0 0 10px; }
-  .recent ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-  .recent a { display: flex; justify-content: space-between; gap: 12px; color: var(--ink); text-decoration: none; background: var(--soft); border-radius: 12px; padding: 10px 14px; font-size: 15px; }
-  .recent a:hover { background: #e9ecff; }
-  .recent .when { color: var(--muted); white-space: nowrap; }
-  .empty { color: var(--muted); font-size: 15px; }
+  .recent ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 8px; }
+  .recent li { display: flex; align-items: center; gap: 8px; background: var(--soft); border-radius: 12px; padding: 8px 8px 8px 14px; font-size: 15px; }
+  .recent li button { flex: 1; min-width: 0; display: flex; justify-content: space-between; gap: 10px; background: none; border: none; padding: 2px 0; font: 700 15px var(--body); color: var(--ink); text-align: left; }
+  .recent li button span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .recent li .when { color: var(--muted); white-space: nowrap; }
+  .recent li a { font: 600 12px var(--display); text-decoration: none; color: var(--muted); border: 2px solid var(--line); border-radius: 8px; padding: 2px 8px; }
+  .recent li.active { background: var(--blue-soft); }
 
-  @media (max-width: 640px) {
-    .tiles { grid-template-columns: repeat(3, 1fr); }
-    .hero h2 { font-size: 24px; }
-    iframe { height: 700px; }
+  @media (max-width: 860px) {
+    .res-body { grid-template-columns: 1fr; }
+    nav.cats { position: static; flex-direction: row; overflow-x: auto; padding-bottom: 6px; }
+    nav.cats button { width: auto; flex: none; }
+    .hero { grid-template-columns: 1fr; }
+    .tbl .hide-sm { display: none; }
   }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <svg width="40" height="46" viewBox="0 0 128 148" aria-hidden="true"><path d="M64 6 L116 26 V70 C116 106 92 130 64 142 C36 130 12 106 12 70 V26 Z" fill="#3d5afe" stroke="#141414" stroke-width="8" stroke-linejoin="round"/><path d="M40 74 L58 92 L90 56" fill="none" stroke="#fff" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <svg width="38" height="44" viewBox="0 0 128 148" aria-hidden="true"><path d="M64 6 L116 26 V70 C116 106 92 130 64 142 C36 130 12 106 12 70 V26 Z" fill="#3d5afe" stroke="#141414" stroke-width="8" stroke-linejoin="round"/><path d="M40 74 L58 92 L90 56" fill="none" stroke="#fff" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/></svg>
     <h1>Warden</h1>
     <span class="tag">running locally</span>
   </header>
 
   <form id="scanForm" class="card hero" autocomplete="off">
     <h2>Check a <span class="hl">website</span></h2>
-    <p>Paste a link. Warden crawls it, checks links, meta tags, speed and forms, and shows the report here.</p>
+    <p>Paste a link. Warden checks links, meta tags, speed and forms.</p>
     <div class="scanrow">
       <input id="url" type="text" inputmode="url" placeholder="https://example.com" aria-label="Website URL" required>
-      <button id="go" type="submit">Run QA</button>
+      <button id="go" class="go" type="submit">Run QA</button>
     </div>
     <div class="opts">
       <label>Max pages <input id="maxPages" type="number" min="1" max="500" value="50"></label>
@@ -100,22 +202,23 @@
     <div class="top"><div class="spin" id="spin"></div><b id="progTitle">Starting…</b></div>
     <div class="bar"><div id="barFill"></div></div>
     <div class="step" id="step">Launching browser…</div>
-    <details><summary>Show log</summary><pre id="log"></pre></details>
+    <details class="log"><summary>Show log</summary><pre id="log"></pre></details>
   </section>
 
   <section id="result" class="hidden">
-    <div class="result-head">
-      <h3 id="resultTitle"></h3>
-      <a id="openReport" class="link" href="#" target="_blank" rel="noopener">Open full report ↗</a>
+    <div class="res-head">
+      <span class="site" id="resSite"></span>
+      <span class="when" id="resWhen"></span>
+      <select id="siteSelect" class="chipbtn hidden" aria-label="Site"></select>
+      <span class="actions">
+        <a id="openHtml" class="chipbtn yellow" target="_blank" rel="noopener">Email version ↗</a>
+        <a id="openJson" class="chipbtn" target="_blank" rel="noopener">JSON</a>
+      </span>
     </div>
-    <div class="tiles">
-      <div class="tile"><div class="n" id="tCrit" style="color:var(--coral)">0</div><div class="l">Critical</div></div>
-      <div class="tile"><div class="n" id="tWarn" style="color:var(--amber)">0</div><div class="l">Warnings</div></div>
-      <div class="tile"><div class="n" id="tNew" style="color:var(--blue)">0</div><div class="l">New</div></div>
-      <div class="tile"><div class="n" id="tFixed" style="color:#12a87b">0</div><div class="l">Fixed</div></div>
-      <div class="tile"><div class="n" id="tPages">0</div><div class="l">Pages</div></div>
+    <div class="res-body">
+      <nav class="cats" id="cats" role="tablist" aria-label="Result categories"></nav>
+      <div class="panel" id="panel" role="tabpanel"></div>
     </div>
-    <iframe id="frame" title="QA report"></iframe>
   </section>
 
   <section class="card recent">
@@ -128,29 +231,35 @@
   const $ = (id) => document.getElementById(id);
   let source = null;
 
+  /* ---------- tiny DOM helper (always textContent, never innerHTML) ---------- */
+  function el(tag, props, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(props || {})) {
+      if (v == null || v === false) continue;
+      if (k === 'class') n.className = v;
+      else if (k === 'text') n.textContent = v;
+      else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v === true ? '' : v);
+    }
+    for (const kid of kids.flat(Infinity)) if (kid != null && kid !== false) n.append(kid instanceof Node ? kid : String(kid));
+    return n;
+  }
+  const pathOf = (u) => { try { const x = new URL(u); return x.pathname + x.search; } catch { return u; } };
+  const hostOf = (u) => { try { return new URL(u).host; } catch { return u; } };
+  const fmtMs = (v) => v == null ? '–' : v >= 1000 ? `${(v / 1000).toFixed(1)}s` : `${v}ms`;
+  const fmtKb = (v) => v == null ? '–' : v >= 1000 ? `${(v / 1000).toFixed(1)}MB` : `${v}KB`;
+  const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  const pageLink = (u) => el('a', { href: u, target: '_blank', rel: 'noopener', title: u, text: pathOf(u) });
+  const newTag = (i) => i.isNew ? el('span', { class: 'new', text: 'NEW' }) : null;
+
+  /* ---------- scan form + progress ---------- */
   async function loadStatus() {
     const s = await (await fetch('/api/status')).json();
     if (!s.aiConfigured) { $('ai').checked = false; $('ai').disabled = true; $('aiLabel').classList.add('off'); $('aiLabel').title = 'Set AI_PROVIDER and a key in .env to enable'; }
     if (!s.emailConfigured) { $('email').disabled = true; $('emailLabel').classList.add('off'); $('emailLabel').title = 'Set EMAIL_PROVIDER, EMAIL_TO and EMAIL_FROM in .env to enable'; }
     renderRecent(s.reports);
     if (s.running) { $('url').value = s.running.url; watch(s.running.id, s.running.url); }
-  }
-
-  function renderRecent(reports) {
-    const ul = $('recent');
-    ul.replaceChildren();
-    if (!reports.length) {
-      const li = document.createElement('li'); li.className = 'empty'; li.textContent = 'No reports yet. Run your first scan above.'; ul.append(li); return;
-    }
-    for (const r of reports) {
-      const m = r.name.match(/^(\d{4}-\d{2}-\d{2})_(\d{2})(\d{2})_(.+)\.html$/);
-      const a = document.createElement('a'); a.href = r.url; a.target = '_blank'; a.rel = 'noopener';
-      const site = document.createElement('span'); site.textContent = m ? m[4] : r.name;
-      const when = document.createElement('span'); when.className = 'when';
-      when.textContent = m ? new Date(`${m[1]}T${m[2]}:${m[3]}:00Z`).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '';
-      a.append(site, when);
-      const li = document.createElement('li'); li.append(a); ul.append(li);
-    }
+    else if (s.reports.length) openReport(s.reports[0], false);
   }
 
   $('scanForm').addEventListener('submit', async (e) => {
@@ -167,14 +276,12 @@
   function watch(id, url) {
     source?.close();
     $('go').disabled = true;
-    $('result').classList.add('hidden');
     $('progress').classList.remove('hidden');
     $('spin').classList.remove('hidden');
     $('progTitle').textContent = `Checking ${url}`;
     $('step').textContent = 'Launching browser…';
     $('log').textContent = '';
     setBar(3);
-
     source = new EventSource(`/api/scan/${id}/events`);
     source.addEventListener('log', (e) => onLine(JSON.parse(e.data)));
     source.addEventListener('done', (e) => { source.close(); finish(JSON.parse(e.data)); });
@@ -188,29 +295,19 @@
     if (crawl) { setBar(5 + 60 * (crawl[1] / crawl[2])); return step(`Crawling page ${crawl[1]} of ${crawl[2]}: ${crawl[3]}`); }
     if (/checking links/.test(line)) { setBar(70); return step('Checking every link and image…'); }
     if (/testing forms/.test(line)) { setBar(80); return step('Testing forms…'); }
-    if (/AI summary via/.test(line)) { setBar(90); return step('Writing the AI summary…'); }
     if (/^\s*done:/.test(line)) { setBar(86); return step('Building the report…'); }
+    if (/AI summary via/.test(line)) { setBar(92); return step('Writing the AI summary…'); }
   }
   const step = (t) => { $('step').textContent = t; };
   const setBar = (pct) => { $('barFill').style.width = `${Math.min(100, pct)}%`; };
 
-  function finish(r) {
+  async function finish(r) {
     setBar(100);
     $('go').disabled = false;
     $('progress').classList.add('hidden');
-    $('result').classList.remove('hidden');
-    $('resultTitle').textContent = r.subject.replace(/^QA /, '');
-    $('openReport').href = r.reportUrl;
-    $('tCrit').textContent = r.counts.critical;
-    $('tWarn').textContent = r.counts.warning;
-    $('tNew').textContent = r.counts.new;
-    $('tFixed').textContent = r.fixed;
-    $('tPages').textContent = r.pagesCrawled;
-    const frame = $('frame');
-    frame.onload = () => { try { frame.style.height = frame.contentDocument.documentElement.scrollHeight + 8 + 'px'; } catch {} };
-    frame.src = r.reportUrl;
-    fetch('/api/status').then((x) => x.json()).then((s) => renderRecent(s.reports));
-    $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const s = await (await fetch('/api/status')).json();
+    renderRecent(s.reports);
+    await openReport({ url: r.reportUrl, jsonUrl: r.reportJsonUrl }, true);
   }
 
   function fail(message) {
@@ -218,6 +315,302 @@
     $('spin').classList.add('hidden');
     $('progTitle').textContent = 'Scan failed';
     step(message);
+  }
+
+  /* ---------- recent reports ---------- */
+  let recent = [];
+  function renderRecent(reports) {
+    recent = reports;
+    const ul = $('recent');
+    ul.replaceChildren();
+    if (!reports.length) return ul.append(el('li', { class: 'empty', text: 'No reports yet. Run your first scan above.' }));
+    for (const r of reports) {
+      const m = r.name.match(/^(\d{4}-\d{2}-\d{2})_(\d{2})(\d{2})_(.+)\.html$/);
+      const when = m ? new Date(`${m[1]}T${m[2]}:${m[3]}:00Z`).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '';
+      ul.append(el('li', { 'data-json': r.jsonUrl },
+        el('button', { type: 'button', onclick: () => openReport(r, true) }, el('span', { text: m ? m[4] : r.name }), el('span', { class: 'when', text: when })),
+        el('a', { href: r.url, target: '_blank', rel: 'noopener', text: 'HTML' })));
+    }
+  }
+
+  /* ---------- results view ---------- */
+  const view = { report: null, site: 0, tab: 'overview', links: { q: '', sev: 'all', newOnly: false, page: 0 }, open: new Set() };
+
+  async function openReport(r, scroll) {
+    const res = await fetch(r.jsonUrl);
+    if (!res.ok) return;
+    view.report = await res.json();
+    view.site = 0;
+    view.tab = 'overview';
+    view.links = { q: '', sev: 'all', newOnly: false, page: 0 };
+    view.open = new Set();
+    $('openHtml').href = r.url;
+    $('openJson').href = r.jsonUrl;
+    for (const li of $('recent').children) li.classList.toggle('active', li.dataset.json === r.jsonUrl);
+    const sel = $('siteSelect');
+    sel.replaceChildren(...view.report.sites.map((s, i) => el('option', { value: i, text: hostOf(s.url) })));
+    sel.classList.toggle('hidden', view.report.sites.length < 2);
+    sel.onchange = () => { view.site = Number(sel.value); view.tab = 'overview'; render(); };
+    $('result').classList.remove('hidden');
+    render();
+    if (scroll) $('result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  const site = () => view.report.sites[view.site];
+  const issues = (check) => site().issues.filter((i) => i.check === check);
+  const sevOf = (list) => list.some((i) => i.severity === 'critical') ? 'crit' : list.length ? 'warn' : 'ok';
+
+  const TABS = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'links', label: 'Broken links', list: () => issues('links') },
+    { id: 'forms', label: 'Forms', list: () => issues('forms') },
+    { id: 'speed', label: 'Speed', list: () => issues('performance'), count: () => new Set(issues('performance').map((i) => i.page)).size },
+    { id: 'meta', label: 'Meta & SEO', list: () => issues('meta') },
+    { id: 'fixed', label: 'Fixed', count: () => site().fixed.length, tone: () => 'ok' },
+  ];
+
+  function render() {
+    const s = site();
+    $('resSite').textContent = hostOf(s.url);
+    $('resWhen').textContent = new Date(view.report.generatedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) + ` · ${plural(s.pagesCrawled, 'page')} crawled`;
+    $('cats').replaceChildren(...TABS.map((t) => {
+      let badge = null;
+      if (t.list || t.count) {
+        const n = t.count ? t.count() : t.list().length;
+        const tone = t.tone ? (n ? 'ok' : '') : sevOf(t.list ? t.list() : []);
+        badge = el('span', { class: `count ${tone}`, text: n === 0 && !t.tone ? '✓' : n });
+      }
+      return el('button', { role: 'tab', 'aria-selected': String(view.tab === t.id), onclick: () => { view.tab = t.id; render(); } }, t.label, badge);
+    }));
+    const panel = $('panel');
+    panel.replaceChildren(PANELS[view.tab](s));
+    // On phones the category row scrolls sideways; keep the selected one in view.
+    $('cats').querySelector('[aria-selected=true]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+
+  const go = (tab) => { view.tab = tab; render(); $('result').scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+
+  const PANELS = {
+    overview(s) {
+      const c = s.counts;
+      const t = view.report.thresholds;
+      const tiles = el('div', { class: 'tiles' },
+        tile(c.critical, 'Critical', 'var(--coral)'), tile(c.warning, 'Warnings', 'var(--amber)'),
+        tile(c.new, 'New', 'var(--blue)'), tile(s.fixed.length, 'Fixed', 'var(--mint-ink)'),
+        tile(s.pagesCrawled, 'Pages'), tile(s.linksChecked, 'Links checked'));
+      const ai = view.report.ai ? el('div', { class: 'ai' },
+        el('div', { class: 'k', text: `AI summary · ${view.report.ai.provider} / ${view.report.ai.model}` }),
+        view.report.ai.text.split(/\r?\n/).filter((l) => l.trim()).map((l) => /^\s*[-*•]\s+/.test(l)
+          ? el('div', { class: 'b', text: '• ' + l.replace(/^\s*[-*•]\s+/, '') }) : el('div', { text: l }))) : null;
+
+      const perfPages = groupPerf(issues('performance'));
+      const cards = [
+        catCard('Broken links', 'links', issues('links'), (i) => [pathOf(i.detail.url), i.message]),
+        catCard('Forms', 'forms', issues('forms'), (i) => [pathOf(i.page), i.detail?.reason || i.message], s.formResults.length ? `${s.formResults.length} tested` : 'none configured'),
+        catCard('Speed', 'speed', perfPages.map((p) => ({ ...p, severity: p.worst })), (p) => [pathOf(p.page), `load ${fmtMs(p.perf.loadMs)} · LCP ${fmtMs(p.perf.lcpMs)}`], s.performance?.avgLoadMs != null ? `avg ${fmtMs(s.performance.avgLoadMs)}` : null),
+        catCard('Meta & SEO', 'meta', issues('meta'), null, null, metaGroups(issues('meta')).map((g) => [g.label, plural(g.items.length, 'page')])),
+      ];
+      const clear = c.critical + c.warning === 0 ? el('p', { class: 'allclear', text: '✓ All clear. No problems found.' }) : null;
+      return el('div', {}, tiles, ai, clear, el('div', { class: 'catgrid' }, cards),
+        t ? el('p', { class: 'lead', style: 'margin-top:16px', text: `Speed limits: load ${fmtMs(t.loadMs)}, LCP ${fmtMs(t.lcpMs)}, page weight ${fmtKb(t.pageWeightKb)}.` }) : null);
+    },
+
+    links(s) {
+      const all = issues('links');
+      const f = view.links;
+      const q = f.q.toLowerCase();
+      const rows = all.filter((i) => (f.sev === 'all' || i.severity === f.sev) && (!f.newOnly || i.isNew) &&
+        (!q || i.detail.url.toLowerCase().includes(q) || (i.detail.foundOn || []).some((p) => p.toLowerCase().includes(q))));
+      const PER = 25;
+      const pages = Math.max(1, Math.ceil(rows.length / PER));
+      f.page = Math.min(f.page, pages - 1);
+      const shown = rows.slice(f.page * PER, f.page * PER + PER);
+
+      const search = el('input', { type: 'search', placeholder: 'Search links or pages…', value: f.q });
+      search.addEventListener('input', () => { f.q = search.value; f.page = 0; rerenderKeepFocus(search); });
+      const crit = all.filter((i) => i.severity === 'critical').length;
+      const filt = (label, on, fn) => el('button', { class: 'filter', type: 'button', 'aria-pressed': String(on), onclick: fn, text: label });
+
+      if (!all.length) return el('div', {}, head('Broken links', `${s.linksChecked} links and assets checked.`), el('p', { class: 'allclear', text: '✓ No broken links.' }));
+      return el('div', {},
+        head('Broken links', `${plural(all.length, 'problem')} out of ${s.linksChecked} links and assets checked.`),
+        el('div', { class: 'toolbar' }, search,
+          filt(`All ${all.length}`, f.sev === 'all', () => { f.sev = 'all'; f.page = 0; render(); }),
+          filt(`Broken ${crit}`, f.sev === 'critical', () => { f.sev = 'critical'; f.page = 0; render(); }),
+          filt(`Warnings ${all.length - crit}`, f.sev === 'warning', () => { f.sev = 'warning'; f.page = 0; render(); }),
+          filt('New only', f.newOnly, () => { f.newOnly = !f.newOnly; f.page = 0; render(); })),
+        rows.length ? el('table', { class: 'tbl' },
+          el('thead', {}, el('tr', {}, el('th', { text: 'Status' }), el('th', { text: 'Link' }), el('th', { class: 'hide-sm', text: 'Type' }), el('th', { text: 'Found on' }))),
+          el('tbody', {}, shown.map((i) => el('tr', {},
+            el('td', {}, el('span', { class: `badge ${i.severity === 'critical' ? 'crit' : 'warn'}`, title: i.message, text: i.detail.status || (i.detail.error || 'error').slice(0, 18) })),
+            el('td', { class: 'url' }, el('div', { class: 'cell' }, el('a', { href: i.detail.url, target: '_blank', rel: 'noopener', title: i.detail.url, text: i.detail.url }), newTag(i))),
+            el('td', { class: 'hide-sm', text: kindLabel(i) }),
+            el('td', { class: 'found' }, foundOn(i.detail.foundOn || [])))))) : el('p', { class: 'empty', text: 'Nothing matches these filters.' }),
+        rows.length > PER ? el('div', { class: 'pager' },
+          `${f.page * PER + 1}–${Math.min(rows.length, f.page * PER + PER)} of ${rows.length}`,
+          el('button', { type: 'button', disabled: f.page === 0, onclick: () => { f.page--; render(); }, text: '← Prev' }),
+          el('button', { type: 'button', disabled: f.page >= pages - 1, onclick: () => { f.page++; render(); }, text: 'Next →' })) : null);
+    },
+
+    forms(s) {
+      const results = s.formResults || [];
+      const failing = results.filter((r) => !r.passed).length;
+      const cards = results.length ? el('div', { class: 'formgrid' }, results.map((r) => el('div', { class: `formcard ${r.passed ? '' : 'fail'}` },
+        el('div', { class: 'top' }, el('span', { class: `badge ${r.passed ? 'ok' : 'crit'}`, text: r.passed ? 'PASS' : 'FAIL' }), pageLink(r.page)),
+        el('div', { class: 'sel', text: `${r.selector} · ${r.mode} mode` }),
+        el('div', { text: r.reason })))) :
+        el('div', { class: 'hint' }, 'No forms are set up for testing yet. Add them under ', el('code', { text: '"forms"' }), ' in ', el('code', { text: 'qa.config.json' }), ' (see the README). Forms found during the crawl are listed below.');
+      const un = s.untestedForms || [];
+      return el('div', {},
+        head('Forms', results.length ? `${plural(results.length, 'form')} tested · ${failing ? `${failing} failing` : 'all passing'}` : 'No form tests configured.'),
+        cards,
+        el('div', { class: 'h4', text: `Found but not tested (${un.length})` }),
+        un.length ? el('table', { class: 'tbl' },
+          el('thead', {}, el('tr', {}, el('th', { text: 'Method' }), el('th', { text: 'Sends to' }), el('th', { class: 'num', text: 'Fields' }), el('th', { text: 'On page' }))),
+          el('tbody', {}, un.map((f) => el('tr', {},
+            el('td', { text: f.method.toUpperCase() }),
+            el('td', { class: 'url' }, el('span', { class: 'ell', title: f.action, text: pathOf(f.action) })),
+            el('td', { class: 'num', text: f.fieldCount }),
+            el('td', {}, pageLink(f.page), f.alsoOn ? ` +${f.alsoOn} more` : '', f.id ? el('span', { class: 'note', style: 'color:var(--muted)', text: ` #${f.id}` }) : null))))) : el('p', { class: 'empty', text: 'None.' }));
+    },
+
+    speed(s) {
+      const t = view.report.thresholds || {};
+      const p = s.performance || {};
+      const flagged = groupPerf(issues('performance'));
+      const tiles = el('div', { class: 'tiles' },
+        tile(fmtMs(p.avgLoadMs), 'Avg load', null, t.loadMs && `limit ${fmtMs(t.loadMs)}`),
+        tile(fmtMs(p.avgLcpMs), 'Avg LCP', null, t.lcpMs && `limit ${fmtMs(t.lcpMs)}`),
+        tile(fmtKb(p.avgTransferKb), 'Avg weight', null, t.pageWeightKb && `limit ${fmtKb(t.pageWeightKb)}`),
+        tile(flagged.length, 'Slow pages', flagged.length ? 'var(--amber)' : 'var(--mint-ink)'));
+      const rows = flagged.length ? flagged : (p.slowest || []).map((x) => ({ page: x.url, perf: x }));
+      return el('div', {},
+        head('Speed', 'Measured in a headless browser on this machine: compare runs over time rather than treating one number as the truth.'),
+        tiles,
+        el('div', { class: 'h4', text: flagged.length ? `Pages over the limit (${flagged.length})` : '✓ No page over the limits. Slowest pages:' }),
+        el('table', { class: 'tbl' },
+          el('thead', {}, el('tr', {}, el('th', { text: 'Page' }), el('th', { class: 'num', text: 'Load' }), el('th', { class: 'num', text: 'LCP' }), el('th', { class: 'num', text: 'Weight' }), el('th', { class: 'num hide-sm', text: 'Requests' }), el('th', { class: 'num hide-sm', text: 'TTFB' }))),
+          el('tbody', {}, rows.map((r) => el('tr', {},
+            el('td', { class: 'url' }, el('div', { class: 'cell' }, pageLink(r.page), r.isNew ? el('span', { class: 'new', text: 'NEW' }) : null)),
+            metric(r.perf.loadMs, t.loadMs, fmtMs), metric(r.perf.lcpMs, t.lcpMs, fmtMs), metric(r.perf.transferKb, t.pageWeightKb, fmtKb),
+            el('td', { class: 'num hide-sm', text: r.perf.requests ?? '–' }),
+            el('td', { class: 'num hide-sm', text: fmtMs(r.perf.ttfbMs) }))))));
+    },
+
+    meta(s) {
+      const all = issues('meta');
+      if (!all.length) return el('div', {}, head('Meta & SEO', `${plural(s.pagesCrawled, 'page')} checked.`), el('p', { class: 'allclear', text: '✓ No meta or SEO problems.' }));
+      const groups = metaGroups(all);
+      const allOpen = groups.every((g) => view.open.has(g.key));
+      return el('div', {},
+        head('Meta & SEO', `${plural(all.length, 'problem')} in ${plural(groups.length, 'group')}. Click a group to see the pages.`),
+        el('div', { class: 'toolbar' }, el('button', { class: 'filter', type: 'button', onclick: () => { groups.forEach((g) => allOpen ? view.open.delete(g.key) : view.open.add(g.key)); render(); }, text: allOpen ? 'Collapse all' : 'Expand all' })),
+        el('div', { class: 'groups' }, groups.map((g) => {
+          const newCount = g.items.filter((i) => i.isNew).length;
+          return el('div', { class: `group ${view.open.has(g.key) ? 'open' : ''}` },
+            el('button', { type: 'button', 'aria-expanded': String(view.open.has(g.key)), onclick: () => { view.open.has(g.key) ? view.open.delete(g.key) : view.open.add(g.key); render(); } },
+              el('span', { class: 'dot', style: `background:${g.severity === 'critical' ? 'var(--coral)' : 'var(--yellow)'}` }),
+              el('span', {}, el('div', { class: 'gl', text: g.label }), el('div', { class: 'gh', text: g.hint })),
+              el('span', { class: 'gc' }, newCount ? el('span', { class: 'new', text: `${newCount} NEW` }) : null,
+                el('span', { class: `badge ${g.severity === 'critical' ? 'crit' : 'warn'}`, text: g.dup ? plural(g.items.length, 'set') : plural(g.items.length, 'page') }),
+                el('span', { class: 'chev', text: '▶' }))),
+            el('div', { class: 'gbody' }, g.dup
+              ? g.items.map((i) => el('div', { class: 'dup' }, el('q', { text: i.key.slice(i.key.indexOf(':') + 1) }), ` on ${plural(i.detail.pages.length, 'page')}: `,
+                  i.detail.pages.map((p, n) => [n ? ', ' : '', pageLink(p)])))
+              : el('div', { class: 'pagegrid' }, g.items.map((i) => el('div', {}, pageLink(i.page), g.showMsg ? el('span', { class: 'note', text: shortMsg(i.message) }) : null, newTag(i))))));
+        })));
+    },
+
+    fixed(s) {
+      const list = s.fixed || [];
+      return el('div', {},
+        head('Fixed since last run', list.length ? `${plural(list.length, 'issue')} from the previous scan of this site no longer appear.` : 'Nothing was fixed compared with the previous scan, or this is the first scan of this site.'),
+        list.length ? el('table', { class: 'tbl' },
+          el('thead', {}, el('tr', {}, el('th', { text: 'Category' }), el('th', { text: 'Page' }), el('th', { text: 'Was' }))),
+          el('tbody', {}, list.map((f) => el('tr', {},
+            el('td', {}, el('span', { class: 'badge ok', text: CHECK_LABEL[f.check] || f.check })),
+            el('td', { class: 'url' }, pageLink(f.page)),
+            el('td', { text: f.message }))))) : null);
+    },
+  };
+
+  /* ---------- panel helpers ---------- */
+  const CHECK_LABEL = { links: 'Link', forms: 'Form', performance: 'Speed', meta: 'Meta' };
+  const head = (title, lead) => el('div', {}, el('h3', { text: title }), el('p', { class: 'lead', text: lead }));
+  const tile = (n, label, color, sub) => el('div', { class: 'tile' }, el('div', { class: 'n', style: color ? `color:${color}` : null, text: n ?? '–' }), el('div', { class: 'l', text: label }), sub ? el('div', { class: 's', text: sub }) : null);
+
+  function catCard(title, tab, list, line, extra, rowsOverride) {
+    const n = list.length;
+    const tone = sevOf(list);
+    const rows = rowsOverride || list.slice(0, 4).map(line);
+    return el('div', { class: 'catcard' },
+      el('div', { class: 't' }, title, el('span', { class: `count ${tone}`, text: n ? n : '✓' })),
+      extra ? el('div', { class: 'lead', style: 'margin:0', text: extra }) : null,
+      n ? el('ul', {}, rows.slice(0, 4).map(([p, m]) => el('li', {}, el('span', { class: 'p', text: p }), el('span', { class: 'm', title: m, text: m })))) : el('div', { class: 'empty', text: 'No problems.' }),
+      n ? el('button', { class: 'more', type: 'button', onclick: () => go(tab), text: `View all ${n} →` }) : null);
+  }
+
+  function foundOn(pages) {
+    if (pages.length <= 1) return pages.map(pageLink);
+    return el('div', {}, pageLink(pages[0]), ' ',
+      el('details', {}, el('summary', { text: `+${pages.length - 1} more` }), el('div', { class: 'list' }, pages.slice(1).map(pageLink))));
+  }
+
+  const kindLabel = (i) => ({ a: 'Link', img: 'Image', script: 'Script', link: 'Stylesheet/icon' })[i.detail.kind || (i.message.match(/(?:Broken|Unreachable) (\w+)/) || [])[1]] || '–';
+
+  function metric(v, limit, fmt) {
+    const cls = v == null || !limit ? '' : v > limit * 2 ? 'bad' : v > limit ? 'meh' : '';
+    return el('td', { class: `num ${cls}`, text: fmt(v) });
+  }
+
+  // One row per page, merging its load / LCP / weight issues.
+  function groupPerf(list) {
+    const byPage = new Map();
+    for (const i of list) {
+      const row = byPage.get(i.page) || { page: i.page, perf: i.detail || {}, worst: 'warning', isNew: false };
+      if (i.severity === 'critical') row.worst = 'critical';
+      row.isNew ||= i.isNew;
+      byPage.set(i.page, row);
+    }
+    return [...byPage.values()].sort((a, b) => (b.perf.loadMs ?? 0) - (a.perf.loadMs ?? 0));
+  }
+
+  const META = {
+    'noindex': ['Marked noindex', 'Search engines are told to drop these pages.'],
+    'title-missing': ['Missing <title>', 'The title is the headline in search results and browser tabs.'],
+    'title-length': ['Title too short or too long', 'Aim for 10–60 characters so it isn\'t cut off.'],
+    'description-missing': ['Missing meta description', 'Search results show this text under your link.'],
+    'description-length': ['Description too short or too long', 'Aim for 50–160 characters.'],
+    'duplicate-title': ['Duplicate titles', 'Each page should have its own title.'],
+    'duplicate-description': ['Duplicate descriptions', 'Each page should have its own description.'],
+    'h1-missing': ['No <h1> heading', 'Each page should have one main heading.'],
+    'h1-multiple': ['More than one <h1>', 'Use a single main heading per page.'],
+    'open-graph': ['Missing Open Graph tags', 'Controls the preview when the link is shared on social media.'],
+    'canonical': ['Missing canonical link', 'Tells search engines which URL is the main version.'],
+    'viewport': ['Missing viewport tag', 'Without it, the page won\'t scale on phones.'],
+    'lang': ['Missing <html lang>', 'Helps screen readers and translation.'],
+  };
+  function metaGroups(list) {
+    const groups = new Map();
+    for (const i of list) {
+      const key = i.key.split(':')[0];
+      if (!groups.has(key)) {
+        const [label, hint] = META[key] || [key, ''];
+        groups.set(key, { key, label, hint, items: [], severity: 'warning', dup: key.startsWith('duplicate-'), showMsg: /length|open-graph|h1-multiple/.test(key) });
+      }
+      const g = groups.get(key);
+      g.items.push(i);
+      if (i.severity === 'critical') g.severity = 'critical';
+    }
+    return [...groups.values()].sort((a, b) => (a.severity === b.severity ? b.items.length - a.items.length : a.severity === 'critical' ? -1 : 1));
+  }
+  const shortMsg = (m) => m.replace(/^Missing /, '').replace(/ \(.*\)$/, '').replace(/ \(link previews.*$/, '');
+
+  function rerenderKeepFocus(input) {
+    const pos = input.selectionStart;
+    render();
+    const again = document.querySelector('.toolbar input[type=search]');
+    if (again) { again.focus(); again.setSelectionRange(pos, pos); }
   }
 
   loadStatus();

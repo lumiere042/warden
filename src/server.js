@@ -41,6 +41,7 @@ export async function startServer({ port = 4173, configPath, outDir, autoScan, l
         job.result = {
           subject,
           reportUrl: `/reports/${encodeURIComponent(path.basename(htmlPath))}`,
+          reportJsonUrl: `/reports/${encodeURIComponent(path.basename(htmlPath, '.html'))}.json`,
           counts: s.counts,
           fixed: s.fixed.length,
           pagesCrawled: s.pagesCrawled,
@@ -168,7 +169,11 @@ function listReports(dir) {
       .sort()
       .reverse()
       .slice(0, 20)
-      .map((name) => ({ name, url: `/reports/${encodeURIComponent(name)}` }));
+      .map((name) => ({
+        name,
+        url: `/reports/${encodeURIComponent(name)}`,
+        jsonUrl: `/reports/${encodeURIComponent(name.replace(/\.html$/, '.json'))}`,
+      }));
   } catch {
     return [];
   }

@@ -38,6 +38,9 @@ export async function runQa(config, { outDir, ai: useAi = true, email: useEmail 
   const previous = loadPrevious(outDir);
   const report = buildReport(siteResults, previous);
   const ai = useAi ? await summarize(report, config.ai, log) : { skipped: 'AI summary turned off' };
+  // Saved with the JSON so the web view can show everything from the file alone.
+  report.ai = ai.text ? { text: ai.text, provider: ai.provider, model: ai.model } : null;
+  report.thresholds = config.thresholds;
   const fullHtml = renderHtml(report, ai);
   const htmlPath = saveReport(outDir, report, fullHtml, previous);
   const subject = subjectLine(report);

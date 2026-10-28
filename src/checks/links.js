@@ -36,7 +36,7 @@ export async function checkLinks(pages, site, config) {
     const external = !sameSite(r.url, site.url);
     const foundOn = [...from];
     if (r.error) {
-      issues.push({ check: 'links', severity: 'critical', key: r.url, page: foundOn[0], message: `Unreachable ${kind}: ${r.error}`, detail: { url: r.url, foundOn } });
+      issues.push({ check: 'links', severity: 'critical', key: r.url, page: foundOn[0], message: `Unreachable ${kind}: ${r.error}`, detail: { url: r.url, kind, error: r.error, foundOn } });
     } else if (r.status >= 400) {
       const blocked = external && BOT_BLOCK_STATUSES.has(r.status);
       issues.push({
@@ -45,7 +45,7 @@ export async function checkLinks(pages, site, config) {
         key: r.url,
         page: foundOn[0],
         message: blocked ? `${r.status} (site may block bots)` : `Broken ${kind} (${r.status})`,
-        detail: { url: r.url, status: r.status, foundOn },
+        detail: { url: r.url, kind, status: r.status, foundOn },
       });
     }
   }

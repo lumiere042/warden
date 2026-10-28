@@ -41,4 +41,4 @@ export function checkPerformance(pages, config) {
 }
 
 export const fmtMs = (v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}s` : `${v}ms`);
-export const fmtKb = (v) => (v >= 1024 ? `${(v / 1024).toFixed(1)}MB` : `${v}KB`);
+export const fmtKb = (v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}MB` : `${v}KB`);
