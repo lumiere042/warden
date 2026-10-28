@@ -4,7 +4,7 @@ https://github.com/user-attachments/assets/9057fd67-e463-4cc5-8122-cc8eaf1e2a4e
 
 # Warden
 
-Automated QA for any website, with the report emailed to you whenever you run it:
+Automated QA for any website. Paste a link and Warden crawls the site in a real browser, then shows you what's broken:
 
 - **Broken links**: internal pages, images, scripts, stylesheets and (optionally) external links
 - **Missing or weak meta tags**: title, description, canonical, viewport, `lang`, H1s, Open Graph, duplicates, accidental `noindex`
@@ -12,28 +12,19 @@ Automated QA for any website, with the report emailed to you whenever you run it
 - **Forms that don't submit**: fills in your forms and checks they really send, without spamming your inbox
 - **AI summary (optional)**: a plain-English "fix these first" briefing from **the AI of your choice** (Claude, OpenAI, Gemini, a local model, or your own adapter)
 
-**No server needed.** Run it on your own computer, or with one click on GitHub Actions, for free. It runs only when you start it, and you can [add a schedule](#run-it-on-a-schedule-optional) if you want it automatic.
+**No server or account needed.** It runs on your own computer, or free on GitHub Actions, and only when you start it.
 
 ---
 
-## How it works
+## Three ways to run it
 
-```
- sitemap.xml + crawl ──► headless Chrome loads each page ──► checks ──► report ──► (AI summary) ──► email
-                          (Playwright)                         │
-                                                               ├─ links:  HEAD/GET every unique URL
-                                                               ├─ meta:   reads the page's <head>
-                                                               ├─ speed:  browser Performance API
-                                                               └─ forms:  fill + submit in a real browser
-```
+| | Command | You get |
+|---|---|---|
+| **In your browser** (easiest) | `npm run serve` | A local page at `http://localhost:4173`: paste any URL, watch it scan, read the results by category |
+| **In the terminal** | `npm run qa -- example.com` | A one-off run; the report is saved to `reports/` and optionally emailed |
+| **On GitHub** | Actions → **Run QA** | Runs on GitHub's servers and emails you the report; no computer needed |
 
-The scanning itself is plain, predictable code, so every run works the same way. The AI only writes the summary at the top of the email: it reads the findings and explains what matters most. Leave the AI out and everything else still works.
-
-Each run also compares with the previous one, so the email marks issues as **NEW** and lists what got **fixed**.
-
----
-
-## Quick start (on your computer)
+## Quick start
 
 Requires Node.js 20+.
 
@@ -43,29 +34,57 @@ cd warden
 npm install
 npx playwright install chromium
 
-cp .env.example .env                       # email + optional AI keys
-cp qa.config.example.json qa.config.json   # your site + forms
-
-npm run serve                # local web page: paste any URL, see the report in your browser
-npm run qa -- --no-email     # one-off run in the terminal, report saved to reports/
-npm run qa                   # same, and emails it
+npm run serve        # open http://localhost:4173 and paste a URL
 ```
 
-`.env` and `qa.config.json` are optional for `npm run serve`; you can scan any URL straight away.
+That's it: no keys or config needed to start. Add `.env` (email, AI) and `qa.config.json` (form tests, limits) later if you want them.
 
-### Check any site from your browser
+---
+
+## Check a site from your browser
 
 ```bash
-npm run serve                        # then open http://localhost:4173 and paste a URL
-npm run serve -- example.com         # or start scanning right away; open the link to watch
+npm run serve                     # open http://localhost:4173 and paste a URL
+npm run serve -- example.com      # or start scanning right away; open the link to watch
 ```
 
-You'll see live progress while it crawls, then the full report on the same page. Past reports are listed underneath. Email is off by default here; tick **Also email me** if you've set it up in `.env`. The page only listens on your own machine (`127.0.0.1`), and `--port 5000` picks a different port.
+You get live progress while it crawls (pages found, current page, a progress bar), then the results on the same page, one category at a time:
 
-For a quick result in the terminal instead, pass the URL to `qa`:
+| Tab | What's in it |
+|---|---|
+| **Overview** | Counts (critical, warnings, new, fixed, pages, links checked), the AI summary if you've set one up, and the top problems in each category |
+| **Broken links** | Every broken link or asset with its status code and the pages it's on. Search it, filter by broken / warnings / new only, 25 per page |
+| **Forms** | Each tested form as PASS or FAIL with the reason, plus forms found on the site that aren't set up for testing yet |
+| **Speed** | Average load, LCP and page weight against your limits, and one row per slow page with load, LCP, weight, requests and server response time |
+| **Meta & SEO** | Grouped by problem, for example "Missing meta description · 30 pages", with a note on why it matters. Click a group to see the pages |
+| **Fixed** | What disappeared since your last scan of that site |
+
+Past scans are listed under **Recent reports**; click one to open it in the same view.
+
+Good to know:
+
+- Type `example.com` and it becomes `https://example.com`; `localhost:3000` becomes `http://`, so local dev servers work too.
+- Email is off here by default. Tick **Also email me** if you've set up email in `.env`. **AI summary** is available once an AI key is set.
+- The page only listens on your own machine (`127.0.0.1`), runs one scan at a time, and `--port 5000` picks a different port.
+
+### Where your results are saved
+
+Every scan, from the browser or the terminal, is saved in the `reports/` folder:
+
+```
+reports/
+  2026-10-28_0820_example.com.html   ← the full report; opens in any browser, even with Warden stopped
+  2026-10-28_0820_example.com.json   ← the same results as data (this is what the browser view reads)
+  last.json                          ← what Warden remembers, to mark issues NEW / FIXED next time
+```
+
+Each scan gets its own files, named by date, time (UTC) and site. `reports/` is in `.gitignore`, so results never get pushed. Use `--out <folder>` to save them somewhere else. Nothing is emailed unless you set up email.
+
+## Check a site from the terminal
 
 ```bash
-npm run qa -- example.com --no-email
+npm run qa -- example.com --no-email     # scan, save the report, print a summary line
+npm run qa                               # scan the sites in qa.config.json and email the report
 ```
 
 To try it without touching a real site, use the bundled demo site, which has deliberate bugs:
@@ -75,7 +94,7 @@ npm run fixture                                                       # terminal
 npm run qa -- --config test/fixture-site/qa.config.json --no-email    # terminal 2
 ```
 
-## Run it on GitHub (free, no server)
+## Run it on GitHub (free, no computer needed)
 
 1. Click **Use this template**, or fork this repo. A private repo is fine.
 2. Edit `qa.config.json` in your copy and put in your site URL and forms. If you'd rather not commit your URL, add a `SITE_URL` secret instead (step 3).
@@ -124,7 +143,26 @@ schtasks /create /tn "warden" /sc daily /st 07:30 /tr "cmd /c cd /d C:\path\to\w
 
 ---
 
+## How it works
+
+```
+ sitemap.xml + crawl ──► headless Chrome loads each page ──► checks ──► report ──► (AI summary) ──► browser view / email
+                          (Playwright)                         │
+                                                               ├─ links:  HEAD/GET every unique URL
+                                                               ├─ meta:   reads the page's <head>
+                                                               ├─ speed:  browser Performance API
+                                                               └─ forms:  fill + submit in a real browser
+```
+
+The scanning itself is plain, predictable code, so every run works the same way. The AI only writes the summary: it reads the findings and explains what matters most. Leave the AI out and everything else still works.
+
+Each run compares with the previous scan of the same site, so issues are marked **NEW** and you can see what got **fixed**. Scanning one site never resets another site's history.
+
+---
+
 ## Configuration (`qa.config.json`)
+
+Optional. Copy `qa.config.example.json` to `qa.config.json` to set form tests, speed limits and more.
 
 ```jsonc
 {
@@ -142,7 +180,7 @@ schtasks /create /tn "warden" /sc daily /st 07:30 /tr "cmd /c cd /d C:\path\to\w
 }
 ```
 
-You can check several sites at once; they all go into one email. A threshold that's exceeded is a **warning**, and one exceeded by more than 2× is **critical**.
+A threshold that's exceeded is a **warning**, and one exceeded by more than 2× is **critical**. With several sites listed, `npm run qa` checks them all and sends one email. When you scan a URL from the browser page, the form tests and limits for that site are used automatically.
 
 ### Testing forms
 
@@ -167,13 +205,13 @@ Submitting a form on a live site creates real enquiries, so each form needs an e
 | `intercept` (default, safe) | Fills in the form, clicks submit, then **catches and cancels** the outgoing request, so nothing is delivered | the browser actually sends the request. It catches broken JS, validation that blocks submitting, and wrong endpoints |
 | `submit` | Really submits test data | `successText` / `successSelector` appears, and the server didn't answer with an error |
 
-Use `submit` when you also want to know the server side works, for example to spot a contact form returning 500. Use obvious test values so the messages are easy to filter out. Forms the crawl finds that you haven't configured are listed in the report under "Forms found but not tested".
+Use `submit` when you also want to know the server side works, for example to spot a contact form returning 500. Use obvious test values so the messages are easy to filter out. Forms the crawl finds that you haven't configured are listed under "Found but not tested".
 
 ---
 
 ## Choose your AI
 
-The AI summary is optional and works with whichever provider you pick. Set `AI_PROVIDER` plus a key, as env vars locally or as secrets in GitHub:
+The AI summary is optional and works with whichever provider you pick. Set `AI_PROVIDER` plus a key in `.env`, or as secrets on GitHub:
 
 | `AI_PROVIDER` | Key | `AI_MODEL` | Notes |
 |---|---|---|---|
@@ -187,7 +225,7 @@ The AI summary is optional and works with whichever provider you pick. Set `AI_P
 - If `AI_PROVIDER` is empty, it's picked from whichever of `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `GEMINI_API_KEY` is set.
 - `AI_API_KEY` works for any provider and overrides the vendor-specific key.
 - In GitHub you can set `AI_PROVIDER`, `AI_MODEL` and `AI_BASE_URL` as **variables** rather than secrets, since they aren't sensitive.
-- If the AI call fails (bad key, outage, rate limit), the email still goes out without the summary, and the error appears in the run log.
+- If the AI call fails (bad key, outage, rate limit), you still get the report without the summary, and the error appears in the log.
 
 ### Edit what the AI says
 
@@ -217,19 +255,21 @@ The built-in adapters in [`src/ai/providers/`](src/ai/providers/) are short and 
 
 ---
 
-## Email setup
+## Email setup (optional)
+
+Without email, reports are still saved in `reports/` and shown in the browser page. To have them emailed, copy `.env.example` to `.env` and pick one:
 
 **Resend** (easiest): sign up at [resend.com](https://resend.com), verify your domain, create an API key, and set `EMAIL_PROVIDER=resend` and `RESEND_API_KEY`. `EMAIL_FROM` must use the domain you verified.
 
 **SMTP** (any mail provider): set `EMAIL_PROVIDER=smtp` and the `SMTP_*` values. For Gmail, turn on 2-step verification, create an [App Password](https://myaccount.google.com/apppasswords), and use `smtp.gmail.com`, port `465`, your address and the app password.
 
-The email body shows up to 25 rows per section. The complete report is attached as an HTML file.
+The email body shows up to 25 rows per section, and the complete report is attached as an HTML file.
 
 ## Command-line options
 
 ```
-npm run qa -- [url] [options]       one-off run in the terminal
 npm run serve -- [url] [options]    local web page at http://localhost:4173
+npm run qa -- [url] [options]       one-off run in the terminal
 
   url               site to check (instead of the sites in qa.config.json)
   --config <file>   config file (default: qa.config.json)
@@ -243,10 +283,20 @@ npm run serve -- [url] [options]    local web page at http://localhost:4173
 ## Development
 
 ```bash
-npm test     # runs every check against the bundled demo site with known bugs; no network or API keys needed
+npm test     # runs every check and the web server against the bundled demo site; no network or API keys needed
 ```
 
-Layout: `src/crawler.js` (discovery and page data), `src/checks/*` (one file per check), `src/report/*` (diff and HTML), `src/ai/*` (summary and provider adapters), `src/email/send.js`.
+| Path | What it does |
+|---|---|
+| `src/cli.js` | Command line: `qa` and `serve` |
+| `src/run.js` | One full scan: crawl, checks, report, AI summary, email. Shared by the CLI and the server |
+| `src/server.js` | The local web server and its API (start a scan, live progress, serve reports) |
+| `src/web/index.html` | The browser page: scan form, progress and the results view |
+| `src/crawler.js` | Finds pages (sitemap + links) and collects page data in headless Chrome |
+| `src/checks/*` | One file per check: links, meta, performance, forms |
+| `src/report/*` | Builds the report, tracks new/fixed, renders the email/HTML version |
+| `src/ai/*` | The AI summary and the provider adapters |
+| `src/email/send.js` | Resend and SMTP |
 
 ## License
 
