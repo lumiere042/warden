@@ -1,0 +1,26 @@
+{
+  "sites": [
+    {
+      "url": "https://example.com",
+      "maxPages": 50,
+      "forms": [
+        {
+          "page": "/contact",
+          "selector": "form#contact",
+          "mode": "intercept",
+          "fields": {
+            "#email": "qa-test@example.com",
+            "#message": "Automated QA test - please ignore"
+          }
+        }
+      ]
+    }
+  ],
+  "thresholds": {
+    "loadMs": 3000,
+    "lcpMs": 2500,
+    "pageWeightKb": 3000
+  },
+  "checkExternalLinks": true,
+  "exclude": ["/wp-admin", "mailto:", "tel:", "javascript:"]
+}

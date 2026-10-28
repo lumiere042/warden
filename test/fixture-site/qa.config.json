@@ -1,0 +1,16 @@
+{
+  "sites": [
+    {
+      "url": "http://localhost:4000",
+      "maxPages": 20,
+      "forms": [
+        { "page": "/contact", "selector": "form#contact", "mode": "intercept", "fields": { "#email": "qa@example.com", "#message": "hello from qa" } },
+        { "page": "/contact", "selector": "form#contact", "mode": "submit", "successText": "Thanks, we got your message", "fields": { "#email": "qa@example.com" } },
+        { "page": "/contact", "selector": "form#broken", "mode": "submit", "fields": { "#name": "QA" } },
+        { "page": "/contact", "selector": "form#required", "mode": "intercept" }
+      ]
+    }
+  ],
+  "thresholds": { "loadMs": 3000, "lcpMs": 2500, "pageWeightKb": 3000 },
+  "checkExternalLinks": false
+}
