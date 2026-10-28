@@ -1,4 +1,5 @@
 import { pathOf, sameSite } from '../util.js';
+import { newContext } from '../browser.js';
 
 /**
  * Test the forms listed in config, and list forms the crawl found that aren't configured.
@@ -45,14 +46,14 @@ export async function checkForms(browser, pages, site, config) {
 async function testForm(browser, url, form, config) {
   const mode = form.mode || 'intercept';
   const timeout = form.timeoutMs || 15000;
-  const context = await browser.newContext({ userAgent: config.userAgent });
+  const context = await newContext(browser, config);
   const page = await context.newPage();
   const consoleErrors = [];
   page.on('pageerror', (err) => consoleErrors.push(String(err.message || err).slice(0, 300)));
   const base = { page: url, selector: form.selector, mode };
 
   try {
-    await page.goto(url, { waitUntil: 'load', timeout: 30000 });
+    await page.goto(url, { waitUntil: 'load', timeout: config.pageTimeoutMs });
     const formEl = page.locator(form.selector).first();
     if (!(await formEl.count())) return { ...base, passed: false, reason: `selector ${form.selector} not found on page` };
 
