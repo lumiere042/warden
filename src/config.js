@@ -12,6 +12,8 @@ const DEFAULTS = {
   pageTimeoutMs: 30000, // per page load in the browser
   device: null, // Playwright device name for a mobile run, e.g. "Pixel 7"
   auth: {}, // { storageState, headers, cookies }; basic auth comes from AUTH_USERNAME / AUTH_PASSWORD
+  accessibility: { enabled: true, tags: ['wcag2a', 'wcag2aa'], disableRules: [] }, // axe-core audit per page; tags pick the WCAG levels
+  security: { enabled: true, headers: true, certWarnDays: 21 }, // security headers, mixed content, http->https redirect, TLS expiry
   userAgent: 'warden-qa-bot/0.1 (+https://github.com/lumiere042/warden)',
 };
 

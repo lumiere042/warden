@@ -3,6 +3,8 @@ import links from './links.js';
 import forms from './forms-check.js';
 import performance from './performance.js';
 import meta from './meta.js';
+import accessibility from './accessibility.js';
+import security from './security.js';
 
 /**
  * Every check Warden runs, in order. The order is also the order of the report sections.
@@ -35,4 +37,4 @@ import meta from './meta.js';
  *   siteWide  true when the issue isn't tied to one page (key alone identifies it, e.g. a broken URL
  *             found on many pages); put the affected pages in detail.pages to have them listed
  */
-export const CHECKS = [pages, links, forms, performance, meta];
+export const CHECKS = [pages, links, forms, performance, meta, accessibility, security];
