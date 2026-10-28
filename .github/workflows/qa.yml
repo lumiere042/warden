@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: website-qa
+  group: warden
   cancel-in-progress: false
 
 jobs:

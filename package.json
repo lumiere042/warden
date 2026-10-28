@@ -1,10 +1,10 @@
 {
-  "name": "website-qa",
+  "name": "warden",
   "version": "0.1.0",
   "description": "On-demand website QA: broken links, missing meta tags, slow pages and broken forms, emailed as an HTML report.",
   "type": "module",
   "bin": {
-    "website-qa": "src/cli.js"
+    "warden": "src/cli.js"
   },
   "scripts": {
     "qa": "node src/cli.js",

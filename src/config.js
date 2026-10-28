@@ -8,7 +8,7 @@ const DEFAULTS = {
   exclude: ['mailto:', 'tel:', 'javascript:'],
   concurrency: 8,
   timeoutMs: 10000,
-  userAgent: 'website-qa-bot/0.1 (+https://github.com/)',
+  userAgent: 'warden-qa-bot/0.1 (+https://github.com/lumiere042/warden)',
 };
 
 /**

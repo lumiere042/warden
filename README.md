@@ -1,4 +1,4 @@
-# website-qa
+# Warden
 
 Automated QA for any website, with the report emailed to you whenever you run it:
 
@@ -34,8 +34,8 @@ Each run also compares with the previous one, so the email marks issues as **NEW
 Requires Node.js 20+.
 
 ```bash
-git clone https://github.com/<you>/website-qa.git
-cd website-qa
+git clone https://github.com/lumiere042/warden.git
+cd warden
 npm install
 npx playwright install chromium
 
@@ -94,10 +94,10 @@ GitHub cron times are always **UTC**, so convert from your timezone first. [cron
 
 ```bash
 # macOS / Linux: run `crontab -e` and add (local time, 07:30 Mon–Fri):
-30 7 * * 1-5  cd /path/to/website-qa && npm run qa
+30 7 * * 1-5  cd /path/to/warden && npm run qa
 
 # Windows (Command Prompt), 07:30 every day:
-schtasks /create /tn "website-qa" /sc daily /st 07:30 /tr "cmd /c cd /d C:\path\to\website-qa && npm run qa"
+schtasks /create /tn "warden" /sc daily /st 07:30 /tr "cmd /c cd /d C:\path\to\warden && npm run qa"
 ```
 
 ---
