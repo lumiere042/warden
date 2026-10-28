@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from './config.js';
 import { runQa } from './run.js';
+import { readHistory } from './report/history.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const UI = path.join(here, 'web', 'index.html');
@@ -168,6 +169,21 @@ export async function startServer({ port = 4173, host = '127.0.0.1', configPath,
         if (!fs.existsSync(full)) return json(404, { error: 'Report not found' });
         const type = file[2] === 'html' ? { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': REPORT_CSP } : { 'content-type': 'application/json' };
         res.writeHead(200, { ...type, ...SECURITY });
+        return res.end(fs.readFileSync(full));
+      }
+
+      // Past runs of one site (?site=<origin or host>), or every site seen in the saved reports.
+      if (req.method === 'GET' && url.pathname === '/api/history') {
+        return json(200, readHistory(outDir, url.searchParams.get('site')));
+      }
+
+      // Visual check images: /screenshots/<host>/<baseline|current|diff>/<slug>.png
+      const shot = url.pathname.match(/^\/screenshots\/([a-z0-9-][a-z0-9.-]*)\/(baseline|current|diff)\/([a-z0-9-][a-z0-9._-]*\.png)$/i);
+      if (req.method === 'GET' && shot) {
+        const root = path.join(outDir, 'screenshots');
+        const full = path.join(root, path.basename(shot[1]), shot[2], path.basename(shot[3]));
+        if (!full.startsWith(root + path.sep) || !fs.existsSync(full)) return json(404, { error: 'Screenshot not found' });
+        res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'no-cache', ...SECURITY });
         return res.end(fs.readFileSync(full));
       }
 

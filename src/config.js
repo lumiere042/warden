@@ -18,6 +18,8 @@ const DEFAULTS = {
   accessibility: { enabled: true, tags: ['wcag2a', 'wcag2aa'], disableRules: [] }, // axe-core audit per page; tags pick the WCAG levels
   security: { enabled: true, headers: true, certWarnDays: 21 }, // security headers, mixed content, http->https redirect, TLS expiry
   userAgent: 'warden-qa-bot/0.1 (+https://github.com/lumiere042/warden)',
+  // Screenshot diffs against a saved baseline (off by default). threshold: pixelmatch per-pixel; maxDiffPct: % of pixels.
+  visual: { enabled: false, maxPages: 10, fullPage: false, threshold: 0.1, maxDiffPct: 1, viewport: { width: 1280, height: 800 } },
 };
 
 /**
@@ -59,6 +61,7 @@ export function loadConfig({ configPath, siteOverride } = {}) {
     thresholds,
     exclude,
     ignore: validateIgnore(raw.ignore ?? DEFAULTS.ignore),
+    visual: { ...DEFAULTS.visual, ...(raw.visual || {}) },
     sites: sites.map((s) => {
       if (!s.url || !safeOrigin(s.url)) throw new Error(`Invalid site url: ${s.url}`);
       return {

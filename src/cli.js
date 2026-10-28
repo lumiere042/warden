@@ -24,6 +24,7 @@ Usage:
   --format <list>   also write sarif, junit and/or markdown files, e.g. --format sarif,junit
   --out <dir>       where reports are written (default: reports)
   --strict          exit with code 1 when critical issues are found
+  --update-baseline accept the current screenshots as the new visual baseline
   --serve           start the local web page instead of a one-off run
   --port <n>        port for --serve (default: 4173)
   --host <addr>     address --serve listens on (default: 127.0.0.1; use 0.0.0.0 in Docker)
@@ -43,6 +44,7 @@ async function main() {
       format: { type: 'string' },
       out: { type: 'string', default: 'reports' },
       strict: { type: 'boolean', default: false },
+      'update-baseline': { type: 'boolean', default: false },
       serve: { type: 'boolean', default: false },
       port: { type: 'string', default: process.env.PORT || '4173' },
       host: { type: 'string', default: '127.0.0.1' },
@@ -70,6 +72,7 @@ async function main() {
   }
 
   const config = loadConfig({ configPath: args.config, siteOverride: site });
+  if (args['update-baseline']) config.visual.updateBaseline = true;
   const { report, htmlPath, files, subject } = await runQa(config, {
     outDir,
     ai: !args['no-ai'],

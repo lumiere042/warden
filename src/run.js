@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { chromium } from 'playwright';
 import { crawlSite } from './crawler.js';
-import { CHECKS } from './checks/index.js';
+import { CHECKS, isEnabled } from './checks/index.js';
 import { buildReport, loadPrevious, saveReport, subjectLine } from './report/build.js';
 import { renderHtml } from './report/html.js';
 import { summarize } from './ai/summarize.js';
@@ -27,16 +27,17 @@ export async function runQa(
     for (const site of config.sites) {
       throwIfAborted(signal);
       log(`▶ ${site.url}`);
-      const pages = await crawlSite(browser, site, config, log, signal);
+      const pages = await crawlSite(browser, site, config, log, signal, { outDir });
       const checks = {};
-      for (const [n, check] of CHECKS.entries()) {
+      const active = CHECKS.filter((c) => isEnabled(c, config));
+      for (const [n, check] of active.entries()) {
         throwIfAborted(signal);
-        log(`  checking ${check.name} (${n + 1}/${CHECKS.length})…`);
-        checks[check.name] = await runCheck(check, { browser, pages, site, config, previous, log, signal });
+        log(`  checking ${check.name} (${n + 1}/${active.length})…`);
+        checks[check.name] = await runCheck(check, { browser, pages, site, config, previous, log, signal, outDir });
       }
       throwIfAborted(signal);
       siteResults.push({ site, pages, checks });
-      log(`  done: ${CHECKS.map((c) => `${checks[c.name].issues.length} ${c.name}`).join(', ')} issues`);
+      log(`  done: ${active.map((c) => `${checks[c.name].issues.length} ${c.name}`).join(', ')} issues`);
     }
   } finally {
     await browser.close();

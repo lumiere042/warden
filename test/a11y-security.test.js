@@ -49,7 +49,8 @@ after(async () => {
 const byPath = (p) => pages.find((x) => new URL(x.url).pathname === p);
 
 test('checks are registered after meta', () => {
-  assert.deepEqual(CHECKS.map((c) => c.name).slice(-3), ['meta', 'accessibility', 'security']);
+  const names = CHECKS.map((c) => c.name);
+  assert.deepEqual(names.slice(names.indexOf('meta'), names.indexOf('meta') + 3), ['meta', 'accessibility', 'security']);
   assert.deepEqual(config.accessibility.tags, ['wcag2a', 'wcag2aa']);
   assert.equal(config.security.certWarnDays, 21);
 });

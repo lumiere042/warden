@@ -167,6 +167,34 @@
   .recent li a { font: 600 12px var(--display); text-decoration: none; color: var(--muted); border: 2px solid var(--line); border-radius: 8px; padding: 2px 8px; }
   .recent li.active { background: var(--blue-soft); }
 
+  /* history (site trends) */
+  .recent-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .recent-head h3 { margin: 0 !important; }
+  .recent-head .chipbtn { margin-left: auto; }
+  .history .res-head h3 { font-family: var(--display); font-size: 24px; margin: 0; }
+  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-bottom: 18px; }
+  .chart { border: 3px solid var(--ink); border-radius: 16px; padding: 12px 14px 8px; background: #fff; min-width: 0; }
+  .chart .ct { font: 700 17px var(--display); }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); margin: 2px 0 6px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend b { color: var(--ink); }
+  .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .chart .axis { font: 700 11px var(--body); fill: var(--muted); }
+  .chart .hit line { opacity: 0; }
+  .chart .hit:hover line { opacity: 1; }
+  .history td .when { color: var(--muted); font-size: 13px; white-space: nowrap; }
+  .linkbtn { white-space: nowrap; background: none; border: none; padding: 0; font: 700 14.5px var(--body); color: var(--blue); text-decoration: underline; cursor: pointer; text-align: left; }
+
+  /* visual check screenshots */
+  .shotlist { display: grid; gap: 14px; }
+  .shotcard { border: 3px solid var(--ink); border-radius: 16px; padding: 12px 14px; background: #fff; display: grid; gap: 8px; min-width: 0; }
+  .shotcard .top { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: 14.5px; }
+  .shotcard .top a { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 10px; }
+  .shots figure { margin: 0; min-width: 0; }
+  .shots img { display: block; width: 100%; max-height: 240px; object-fit: cover; object-position: top; border: 2px solid var(--ink); border-radius: 10px; background: var(--soft); }
+  .shots figcaption { font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+
   @media (max-width: 860px) {
     .res-body { grid-template-columns: 1fr; }
     nav.cats { position: static; flex-direction: row; overflow-x: auto; padding-bottom: 6px; }
@@ -215,6 +243,7 @@
       <span class="actions">
         <a id="openHtml" class="chipbtn yellow" target="_blank" rel="noopener">Email version ↗</a>
         <a id="openJson" class="chipbtn" target="_blank" rel="noopener">JSON</a>
+        <button id="historyBtn" class="chipbtn" type="button">History</button>
       </span>
     </div>
     <div class="res-body">
@@ -223,8 +252,17 @@
     </div>
   </section>
 
+  <section id="history" class="card history hidden" aria-labelledby="histTitle">
+    <div class="res-head">
+      <h3 id="histTitle">History</h3>
+      <select id="histSite" class="chipbtn" aria-label="Site"></select>
+      <span class="actions"><button id="histClose" class="chipbtn" type="button">Close</button></span>
+    </div>
+    <div id="histBody"></div>
+  </section>
+
   <section class="card recent">
-    <h3>Recent reports</h3>
+    <div class="recent-head"><h3>Recent reports</h3><button id="historyAll" class="chipbtn" type="button">Site history</button></div>
     <ul id="recent"></ul>
   </section>
 </div>
@@ -389,6 +427,8 @@
   // Reports saved before checks were pluggable have no s.checks.
   const checkNames = (s) => s.checks ? Object.keys(s.checks) : ['links', 'forms', 'performance', 'meta'];
   const checkTitle = (s, name) => s.checks?.[name]?.title || name;
+  // Custom panels for checks that use a generic tab (check name -> (site, name) => element), e.g. visual below.
+  const CHECK_PANELS = {};
   const tabsFor = (s) => [
     { id: 'overview', label: 'Overview' },
     ...checkNames(s).map((name) => SPECIAL_TABS[name] || { id: `check:${name}`, check: name, label: checkTitle(s, name), list: () => issues(name) }),
@@ -412,7 +452,7 @@
       return el('button', { role: 'tab', 'aria-selected': String(view.tab === t.id), onclick: () => { view.tab = t.id; render(); } }, t.label, badge);
     }));
     const panel = $('panel');
-    panel.replaceChildren(current.check ? genericPanel(s, current.check) : PANELS[current.id](s));
+    panel.replaceChildren(current.check ? (CHECK_PANELS[current.check] || genericPanel)(s, current.check) : PANELS[current.id](s));
     // On phones the category row scrolls sideways; keep the selected one in view.
     $('cats').querySelector('[aria-selected=true]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
@@ -676,6 +716,159 @@
   }
 
   loadStatus();
+</script>
+
+<script>
+  /* ---------- history: trends of past runs per site (GET /api/history) ---------- */
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  function svg(tag, attrs, ...kids) {
+    const n = document.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(attrs || {})) if (v != null) n.setAttribute(k, v);
+    for (const kid of kids.flat(Infinity)) if (kid != null && kid !== false) n.append(kid instanceof Node ? kid : String(kid));
+    return n;
+  }
+  const fmtDate = (iso, opts = { dateStyle: 'medium', timeStyle: 'short' }) => new Date(iso).toLocaleString([], opts);
+  const shortDate = (iso) => fmtDate(iso, { month: 'short', day: 'numeric' });
+  const hist = { site: null };
+
+  async function openHistory(host) {
+    $('history').classList.remove('hidden');
+    $('histBody').replaceChildren(el('p', { class: 'empty', text: 'Loading…' }));
+    const list = await (await fetch('/api/history')).json();
+    const sites = list.sites || [];
+    hist.site = host && sites.some((s) => s.site === host) ? host : sites[0]?.site || null;
+    $('histSite').replaceChildren(...sites.map((s) => el('option', { value: s.site, selected: s.site === hist.site, text: `${s.site} (${plural(s.runs, 'run')})` })));
+    $('histSite').classList.toggle('hidden', sites.length < 2);
+    if (!hist.site) $('histBody').replaceChildren(el('p', { class: 'empty', text: 'No saved reports yet. Run a scan to start a history.' }));
+    else await renderHistory();
+    $('history').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async function renderHistory() {
+    const { runs = [] } = await (await fetch(`/api/history?site=${encodeURIComponent(hist.site)}`)).json();
+    $('histTitle').textContent = `History · ${hist.site}`;
+    if (!runs.length) return $('histBody').replaceChildren(el('p', { class: 'empty', text: 'No runs found for this site.' }));
+    const dates = runs.map((r) => r.generatedAt);
+    const hasSpeed = runs.some((r) => r.avgLoadMs != null || r.avgLcpMs != null);
+    $('histBody').replaceChildren(
+      el('p', { class: 'lead', text: `${plural(runs.length, 'run')} since ${fmtDate(dates[0], { dateStyle: 'medium' })}. Click a run to open its report.` }),
+      el('div', { class: 'charts' },
+        lineChart('Issues per run', dates, (v) => String(v), [
+          { label: 'Critical', color: '#d62f2f', values: runs.map((r) => r.critical) },
+          { label: 'Warnings', color: '#c48a00', dash: '6 4', values: runs.map((r) => r.warning) },
+        ]),
+        hasSpeed ? lineChart('Average speed', dates, fmtMs, [
+          { label: 'Load', color: '#3d5afe', values: runs.map((r) => r.avgLoadMs) },
+          { label: 'LCP', color: '#0f8f69', dash: '6 4', values: runs.map((r) => r.avgLcpMs) },
+        ]) : el('div', { class: 'chart' }, el('div', { class: 'ct', text: 'Average speed' }), el('p', { class: 'empty', text: 'These reports have no speed data.' }))),
+      el('table', { class: 'tbl' },
+        el('thead', {}, el('tr', {}, el('th', { text: 'Run' }), el('th', { class: 'num', text: 'Critical' }), el('th', { class: 'num', text: 'Warnings' }),
+          el('th', { class: 'num hide-sm', text: 'New' }), el('th', { class: 'num hide-sm', text: 'Fixed' }), el('th', { class: 'num hide-sm', text: 'Pages' }), el('th', { class: 'hide-sm', text: 'Report' }))),
+        el('tbody', {}, [...runs].reverse().map((r) => el('tr', {},
+          el('td', {}, el('button', { class: 'linkbtn', type: 'button', onclick: () => openRun(r), text: fmtDate(r.generatedAt, { dateStyle: 'medium' }) }),
+            el('div', { class: 'when', text: fmtDate(r.generatedAt, { timeStyle: 'short' }) })),
+          el('td', { class: `num ${r.critical ? 'bad' : ''}`, text: r.critical ?? '–' }),
+          el('td', { class: `num ${r.warning ? 'meh' : ''}`, text: r.warning ?? '–' }),
+          el('td', { class: 'num hide-sm', text: r.new ?? '–' }),
+          el('td', { class: 'num hide-sm', text: r.fixed ?? '–' }),
+          el('td', { class: 'num hide-sm', text: r.pagesCrawled ?? '–' }),
+          el('td', { class: 'hide-sm' }, el('a', { href: r.reportUrl, target: '_blank', rel: 'noopener', text: 'HTML ↗' })))))));
+  }
+
+  // Open a past run in the results view, on this site's tab when the report covers several sites.
+  async function openRun(r) {
+    await openReport({ url: r.reportUrl, jsonUrl: r.reportJsonUrl }, true);
+    const i = view.report?.sites.findIndex((s) => hostOf(s.url) === r.site) ?? -1;
+    if (i > 0) { view.site = i; $('siteSelect').value = String(i); render(); }
+  }
+
+  /**
+   * A small line chart, one shared y-axis from 0. Each series: { label, color, dash?, values } with
+   * a value per run (null = no data, the line breaks). Hovering a run shows a crosshair and its values.
+   */
+  function lineChart(title, dates, fmt, series) {
+    // Narrower drawing on phones, so the axis text keeps a readable size.
+    const W = window.innerWidth < 600 ? 360 : 560, H = 190, L = 48, R = 14, T = 12, B = 28;
+    const n = dates.length;
+    const max = Math.max(0, ...series.flatMap((s) => s.values.filter((v) => v != null)));
+    const top = Math.max(2, niceMax(max)); // at least 0 / 1 / 2, so tick labels don't repeat
+    const x = (i) => n === 1 ? L + (W - L - R) / 2 : L + (i * (W - L - R)) / (n - 1);
+    const y = (v) => T + (H - T - B) * (1 - v / top);
+    const latest = (s) => [...s.values].reverse().find((v) => v != null);
+    const summary = series.map((s) => `${s.label} ${latest(s) != null ? fmt(latest(s)) : 'no data'}`).join(', ');
+
+    const grid = [0, top / 2, top].map((v) => svg('g', {},
+      svg('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: v ? '#e7e7e7' : '#141414', 'stroke-width': v ? 1 : 2 }),
+      svg('text', { class: 'axis', x: L - 8, y: y(v) + 4, 'text-anchor': 'end' }, fmt(Math.round(v)))));
+    const xLabels = [svg('text', { class: 'axis', x: x(0), y: H - 8, 'text-anchor': n === 1 ? 'middle' : 'start' }, shortDate(dates[0]))];
+    if (n > 1) xLabels.push(svg('text', { class: 'axis', x: x(n - 1), y: H - 8, 'text-anchor': 'end' }, shortDate(dates[n - 1])));
+
+    const lines = series.map((s) => {
+      let d = '', pen = false;
+      s.values.forEach((v, i) => {
+        if (v == null) { pen = false; return; }
+        d += `${pen ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`;
+        pen = true;
+      });
+      const dots = s.values.map((v, i) => v == null || (n > 40 && i !== n - 1) ? null
+        : svg('circle', { cx: x(i), cy: y(v), r: 4, fill: s.color, stroke: '#fff', 'stroke-width': 2 }));
+      return svg('g', {}, svg('path', { d, fill: 'none', stroke: s.color, 'stroke-width': 2, 'stroke-dasharray': s.dash, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }), dots);
+    });
+
+    // One invisible column per run: a big hover target with a native tooltip and a crosshair.
+    const step = n > 1 ? (W - L - R) / (n - 1) : W - L - R;
+    const hits = dates.map((d, i) => svg('g', { class: 'hit' },
+      svg('title', {}, `${fmtDate(d)}: ${series.map((s) => `${s.label} ${s.values[i] != null ? fmt(s.values[i]) : '–'}`).join(', ')}`),
+      svg('line', { x1: x(i), x2: x(i), y1: T, y2: H - B, stroke: '#141414', 'stroke-width': 1, 'stroke-dasharray': '3 3' }),
+      svg('rect', { x: x(i) - step / 2, y: T, width: step, height: H - T - B, fill: 'transparent' })));
+
+    const legend = el('div', { class: 'legend' }, series.map((s) => el('span', {},
+      svg('svg', { width: 22, height: 8, 'aria-hidden': 'true' }, svg('line', { x1: 1, x2: 21, y1: 4, y2: 4, stroke: s.color, 'stroke-width': 2, 'stroke-dasharray': s.dash })),
+      s.label, latest(s) != null ? el('b', { text: fmt(latest(s)) }) : null)));
+    const chart = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `${title} over ${plural(n, 'run')}. Latest: ${summary}.` },
+      svg('title', {}, `${title}. Latest: ${summary}`), grid, xLabels, lines, hits);
+    return el('div', { class: 'chart' }, el('div', { class: 'ct', text: title }), legend, chart);
+  }
+
+  function niceMax(v) {
+    if (!(v > 0)) return 1;
+    const p = 10 ** Math.floor(Math.log10(v));
+    const m = v / p;
+    return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+  }
+
+  $('historyBtn').addEventListener('click', () => view.report && openHistory(hostOf(site().url)));
+  $('historyAll').addEventListener('click', () => openHistory(view.report ? hostOf(site().url) : null));
+  $('histClose').addEventListener('click', () => $('history').classList.add('hidden'));
+  $('histSite').addEventListener('change', () => { hist.site = $('histSite').value; renderHistory(); });
+
+  /* ---------- visual check: baseline / current / diff screenshots ---------- */
+  CHECK_STEP.visual = 'Comparing screenshots…';
+  const shotUrl = (rel) => typeof rel === 'string' && /^screenshots\/[^/]+\/(baseline|current|diff)\/[^/]+\.png$/.test(rel)
+    ? '/' + rel.split('/').map(encodeURIComponent).join('/') : null;
+  const shot = (rel, label, page) => {
+    const src = shotUrl(rel);
+    return src ? el('figure', {}, el('a', { href: src, target: '_blank', rel: 'noopener', title: `Open the ${label.toLowerCase()} image` },
+      el('img', { src, alt: `${label} screenshot of ${pathOf(page)}`, loading: 'lazy' })), el('figcaption', { text: label })) : null;
+  };
+
+  CHECK_PANELS.visual = (s, name) => {
+    const all = issues(name);
+    const info = s.checks?.[name] || {};
+    const sum = info.summary || {};
+    const compared = sum.screenshots ? `${plural(sum.screenshots, 'page')} compared with their baseline` : 'No screenshots taken';
+    const saved = sum.baselined ? ` ${plural(sum.baselined, 'new baseline')} saved.` : '';
+    const accepted = sum.accepted ? ` ${plural(sum.accepted, 'change')} accepted as the new baseline.` : '';
+    const failed = info.error ? el('p', { class: 'hint', text: `This check failed to run: ${info.error}` }) : null;
+    if (!all.length) return el('div', {}, head(checkTitle(s, name), `${compared}.${saved}${accepted}`), failed, el('p', { class: 'allclear', text: '✓ No visual changes.' }));
+    return el('div', {},
+      head(checkTitle(s, name), `${plural(all.length, 'page')} changed. ${compared}.${saved}${accepted}`), failed,
+      el('p', { class: 'hint', style: 'margin:0 0 14px' }, 'Changes stay listed until you accept them: run again with ', el('code', { text: '--update-baseline' }), '.'),
+      el('div', { class: 'shotlist' }, all.map((i) => el('div', { class: 'shotcard' },
+        el('div', { class: 'top' }, el('span', { class: 'badge warn', text: 'Changed' }), pageLink(i.page), newTag(i)),
+        el('div', { text: i.message }),
+        el('div', { class: 'shots' }, shot(i.detail?.baseline, 'Baseline', i.page), shot(i.detail?.current, 'Current', i.page), shot(i.detail?.diffImage, 'Diff', i.page))))));
+  };
 </script>
 </body>
 </html>

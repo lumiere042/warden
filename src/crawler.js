@@ -1,7 +1,7 @@
 import zlib from 'node:zlib';
 import { normalizeUrl, isExcluded, sameSite, pathOf, throwIfAborted } from './util.js';
 import { contextOptions, newContext, authHeaders } from './browser.js';
-import { CHECKS } from './checks/index.js';
+import { CHECKS, isEnabled } from './checks/index.js';
 
 const NON_HTML_EXT = /\.(pdf|jpe?g|png|gif|webp|svg|ico|zip|gz|mp4|mp3|webm|woff2?|ttf|css|js|json|xml|txt|docx?|xlsx?|pptx?)$/i;
 const SITEMAP_MAX_URLS = 5000;
@@ -13,8 +13,9 @@ const SITEMAP_MAX_DEPTH = 3;
  * a big sitemap can't use up the whole page budget before any link is followed.
  * Each page is loaded in a fresh browser context so timings reflect a first visit.
  * Returned pages are in the order they were queued; each has `source`: start | link | sitemap.
+ * `outDir` (the reports folder) is passed on to the checks' collect().
  */
-export async function crawlSite(browser, site, config, log = () => {}, signal) {
+export async function crawlSite(browser, site, config, log = () => {}, signal, { outDir } = {}) {
   contextOptions(config); // fail fast on a bad device name
   const start = normalizeUrl(site.url);
   const seen = new Set([start]);
@@ -63,7 +64,7 @@ export async function crawlSite(browser, site, config, log = () => {}, signal) {
       const index = dispatched++;
       const queued = queues.link.length + queues.sitemap.length;
       log(`  crawl ${index + 1}/${Math.min(site.maxPages, dispatched + queued)} ${item.url}`);
-      const job = visitPage(browser, item.url, config, site).then((page) => {
+      const job = visitPage(browser, item.url, config, site, outDir).then((page) => {
         page.source = item.source;
         done[index] = page;
         pending.delete(index);
@@ -93,7 +94,7 @@ function formSelectorsFor(url, site) {
 }
 
 /** Load one page and collect everything the checks need. Never throws: failures end up in result.error. */
-async function visitPage(browser, url, config, site) {
+async function visitPage(browser, url, config, site, outDir) {
   const consoleErrors = [];
   const sizeJobs = [];
   let transferBytes = 0;
@@ -130,9 +131,9 @@ async function visitPage(browser, url, config, site) {
       result.perf = await collectPerf(page);
       Object.assign(result, await collectDom(page, formSelectorsFor(url, site)));
       for (const check of CHECKS) {
-        if (!check.collect) continue;
+        if (!check.collect || !isEnabled(check, config)) continue;
         try {
-          await check.collect({ page, response, result, site, config });
+          await check.collect({ page, response, result, site, config, outDir });
         } catch (err) {
           result.data[check.name] = { error: err.message.split('\n')[0] };
         }
