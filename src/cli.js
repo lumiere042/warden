@@ -4,6 +4,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { loadConfig } from './config.js';
 import { runQa } from './run.js';
+import { parseFormats } from './report/formats.js';
 import { startServer } from './server.js';
 
 const HELP = `warden — automated QA for websites
@@ -17,6 +18,8 @@ Usage:
   --site <url>      same as giving a url
   --no-email        write the report but don't email it
   --no-ai           skip the AI summary
+  --no-notify       don't post to the Slack/Discord/Teams/webhook URLs set in env
+  --format <list>   also write sarif, junit and/or markdown files, e.g. --format sarif,junit
   --out <dir>       where reports are written (default: reports)
   --strict          exit with code 1 when critical issues are found
   --serve           start the local web page instead of a one-off run
@@ -32,6 +35,8 @@ async function main() {
       site: { type: 'string' },
       'no-email': { type: 'boolean', default: false },
       'no-ai': { type: 'boolean', default: false },
+      'no-notify': { type: 'boolean', default: false },
+      format: { type: 'string' },
       out: { type: 'string', default: 'reports' },
       strict: { type: 'boolean', default: false },
       serve: { type: 'boolean', default: false },
@@ -53,13 +58,17 @@ async function main() {
   }
 
   const config = loadConfig({ configPath: args.config, siteOverride: site });
-  const { report, htmlPath, subject } = await runQa(config, {
+  const { report, htmlPath, files, subject } = await runQa(config, {
     outDir,
     ai: !args['no-ai'],
     email: !args['no-email'],
+    notify: !args['no-notify'],
+    formats: parseFormats(args.format ?? config.formats),
+    jobSummary: true, // only writes when GITHUB_STEP_SUMMARY is set (GitHub Actions)
     log: (msg) => console.log(msg),
   });
   console.log(`\n${subject}\nReport: ${htmlPath}`);
+  for (const file of files) console.log(`        ${file}`);
 
   const critical = report.sites.reduce((n, s) => n + s.counts.critical, 0);
   if (args.strict && critical) process.exitCode = 1;

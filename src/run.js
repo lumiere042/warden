@@ -9,12 +9,17 @@ import { buildReport, loadPrevious, saveReport, subjectLine } from './report/bui
 import { renderHtml } from './report/html.js';
 import { summarize } from './ai/summarize.js';
 import { sendEmail } from './email/send.js';
+import { writeFormats, writeJobSummary } from './report/formats.js';
+import { reportLink, sendNotifications } from './notify/webhooks.js';
 
 /**
  * One full QA run: crawl + check every site, build and save the report, then the optional
- * AI summary and email. Shared by the CLI and the local web server.
+ * AI summary, CI output files, email and chat notifications. Shared by the CLI and the local web server.
  */
-export async function runQa(config, { outDir, ai: useAi = true, email: useEmail = false, log = () => {} }) {
+export async function runQa(
+  config,
+  { outDir, ai: useAi = true, email: useEmail = false, notify: useNotify = false, formats = [], jobSummary = false, log = () => {} }
+) {
   const browser = await chromium.launch();
   const siteResults = [];
   try {
@@ -45,6 +50,12 @@ export async function runQa(config, { outDir, ai: useAi = true, email: useEmail 
   const htmlPath = saveReport(outDir, report, fullHtml, previous);
   const subject = subjectLine(report);
 
+  // CI outputs: --format files next to the report, and the GitHub Actions job summary.
+  const reportName = path.basename(htmlPath);
+  const extra = { subject, reportName, reportUrl: reportLink(reportName) };
+  const files = writeFormats(htmlPath.replace(/\.html$/, ''), report, formats, extra);
+  if (jobSummary && writeJobSummary(report, extra)) log('Wrote the GitHub job summary.');
+
   let emailed = null;
   if (useEmail) {
     if (!config.email.provider) {
@@ -64,5 +75,7 @@ export async function runQa(config, { outDir, ai: useAi = true, email: useEmail 
     }
   }
 
-  return { report, ai, htmlPath, subject, emailed };
+  const notified = useNotify ? await sendNotifications(report, { subject, reportName, onlyOnIssues: config.notify?.onlyOnIssues, log }) : [];
+
+  return { report, ai, htmlPath, files, subject, emailed, notified };
 }

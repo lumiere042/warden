@@ -67,6 +67,9 @@ export function loadConfig({ configPath, siteOverride } = {}) {
         .filter(Boolean),
     },
     ai: resolveAi(raw.ai || {}),
+    // Chat webhooks (URLs come from env). onlyOnIssues: stay quiet unless something is critical or new.
+    notify: { onlyOnIssues: false, ...(raw.notify || {}) },
+    formats: raw.formats || [],
   };
 }
 
