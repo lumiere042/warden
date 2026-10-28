@@ -1,4 +1,4 @@
-import { pathOf } from '../util.js';
+import { pathOf, sameSite } from '../util.js';
 
 /**
  * Test the forms listed in config, and list forms the crawl found that aren't configured.
@@ -61,28 +61,53 @@ async function testForm(browser, url, form, config) {
       if (!(await field.count())) return { ...base, passed: false, reason: `field ${selector} not found` };
       const tag = await field.evaluate((el) => `${el.tagName.toLowerCase()}:${el.type || ''}`);
       if (tag.startsWith('select')) await field.selectOption(String(value));
-      else if (/:(checkbox|radio)$/.test(tag)) value ? await field.check() : await field.uncheck();
+      else if (tag.endsWith(':radio')) value && (await field.check()); // a radio can't be unchecked; skip falsy
+      else if (tag.endsWith(':checkbox')) value ? await field.check() : await field.uncheck();
       else await field.fill(String(value));
     }
 
-    // Requests made as a result of submitting: any non-GET, or a navigation (GET forms).
+    // Requests made as a result of submitting: any non-GET, or a navigation (GET forms). Analytics beacons
+    // and chat widgets also fire on click, so rank each one: 3 = hits expectEndpoint, 2 = hits the form's
+    // action, 1 = same site, 0 = unrelated third party (left alone, never counted as the submission).
+    const actionUrl = await formEl.evaluate((f) => new URL(f.getAttribute('action') || '', document.baseURI).href);
+    const target = form.expectEndpoint || pathOf(actionUrl);
+    const rank = (u) => (form.expectEndpoint && u.includes(form.expectEndpoint) ? 3 : sameEndpoint(u, actionUrl) ? 2 : sameSite(u, url) ? 1 : 0);
     const captured = [];
-    const isSubmission = (req) => req.method() !== 'GET' || (req.isNavigationRequest() && req.frame() === page.mainFrame());
+    const capture = (req, extra) => {
+      const c = { url: req.url(), method: req.method(), rank: rank(req.url()), at: Date.now(), ...extra };
+      captured.push(c);
+      return c;
+    };
+    const isNav = (req) => req.isNavigationRequest() && req.frame() === page.mainFrame();
+    const isSubmission = (req) => req.method() !== 'GET' || isNav(req);
     if (mode === 'intercept') {
       await page.route('**/*', (route) => {
         const req = route.request();
-        if (isSubmission(req)) {
-          captured.push({ url: req.url(), method: req.method(), postData: req.postData() });
-          return route.abort();
-        }
-        return route.continue();
+        if (!isSubmission(req)) return route.continue();
+        const c = capture(req, { postData: req.postData() });
+        return c.rank || isNav(req) ? route.abort() : route.continue();
       });
     } else {
-      page.on('response', (res) => {
-        const req = res.request();
-        if (isSubmission(req)) captured.push({ url: req.url(), method: req.method(), status: res.status() });
-      });
+      page.on('response', (res) => isSubmission(res.request()) && capture(res.request(), { status: res.status() }));
     }
+
+    // The submission is the best-ranked request. Without expectEndpoint, a same-site request counts if no
+    // request to the action follows within a second (JS forms often post somewhere other than their action).
+    const want = form.expectEndpoint ? 3 : 2;
+    const best = () => captured.reduce((b, c) => (c.rank > (b?.rank || 0) ? c : b), null);
+    const settled = () => {
+      const b = best();
+      return b && (b.rank >= want || (!form.expectEndpoint && Date.now() - b.at > 1000));
+    };
+    const submission = () => {
+      const b = best();
+      return b && (!form.expectEndpoint || b.rank >= 3) ? b : null;
+    };
+    const notSent = async () => {
+      const b = best();
+      if (b && form.expectEndpoint) return `request went to ${b.url}, expected ${form.expectEndpoint}`;
+      return blockedReason(formEl, consoleErrors, target, captured.filter((c) => !c.rank));
+    };
 
     const submit = form.submitSelector
       ? formEl.locator(form.submitSelector).first()
@@ -91,12 +116,9 @@ async function testForm(browser, url, form, config) {
     else await formEl.evaluate((f) => f.requestSubmit());
 
     if (mode === 'intercept') {
-      const sent = await waitFor(() => captured.length > 0, 5000);
-      if (!sent) return { ...base, passed: false, reason: await blockedReason(formEl, consoleErrors) };
-      const req = captured[0];
-      if (form.expectEndpoint && !req.url.includes(form.expectEndpoint)) {
-        return { ...base, passed: false, reason: `request went to ${req.url}, expected ${form.expectEndpoint}`, request: req };
-      }
+      await waitFor(settled, 5000);
+      const req = submission();
+      if (!req) return { ...base, passed: false, reason: await notSent(), ...(best() && { request: best() }) };
       const missing = missingValues(req, form.fields);
       return {
         ...base,
@@ -106,15 +128,14 @@ async function testForm(browser, url, form, config) {
       };
     }
 
-    // submit mode
+    // submit mode: only the submission's own response decides the result, not a third-party 4xx.
     const success = await waitForSuccess(page, form, timeout);
-    const failedResponse = captured.find((c) => c.status >= 400);
-    if (failedResponse) return { ...base, passed: false, reason: `server returned ${failedResponse.status} from ${pathOf(failedResponse.url)}` };
+    await waitFor(settled, 5000);
+    const sub = submission();
+    if (sub?.status >= 400) return { ...base, passed: false, reason: `server returned ${sub.status} from ${pathOf(sub.url)}` };
     if (success) return { ...base, passed: true, reason: success };
-    if (!form.successSelector && !form.successText && captured.length) {
-      return { ...base, passed: true, reason: `${captured[0].method} ${pathOf(captured[0].url)} returned ${captured[0].status}` };
-    }
-    if (!captured.length) return { ...base, passed: false, reason: await blockedReason(formEl, consoleErrors) };
+    if (!sub) return { ...base, passed: false, reason: await notSent() };
+    if (!form.successSelector && !form.successText) return { ...base, passed: true, reason: `${sub.method} ${pathOf(sub.url)} returned ${sub.status}` };
     return { ...base, passed: false, reason: `no success message within ${timeout / 1000}s` };
   } catch (err) {
     return { ...base, passed: false, reason: err.message.split('\n')[0] };
@@ -123,14 +144,35 @@ async function testForm(browser, url, form, config) {
   }
 }
 
-/** Explain why no request left the browser: invalid fields, or a JS error. */
-async function blockedReason(formEl, consoleErrors) {
+/** Explain why no submission left the browser: invalid fields, or a JS error. Lists unrelated requests seen. */
+async function blockedReason(formEl, consoleErrors, target, unrelated = []) {
   const invalid = await formEl
     .evaluate((f) => [...f.querySelectorAll(':invalid')].map((el) => `${el.name || el.id || el.tagName.toLowerCase()} (${el.validationMessage})`))
     .catch(() => []);
   if (invalid.length) return `browser validation blocked submit: ${invalid.join('; ')}`;
-  if (consoleErrors.length) return `no request sent; JS error: ${consoleErrors[0]}`;
-  return 'no request was sent after clicking submit';
+  const list = unrelated.slice(0, 3).map((c) => `${c.method} ${shortUrl(c.url)}`).join(', ') + (unrelated.length > 3 ? ', ...' : '');
+  const saw = unrelated.length ? ` (saw ${unrelated.length} unrelated request${unrelated.length > 1 ? 's' : ''}: ${list})` : '';
+  if (consoleErrors.length) return `no request to ${target} was sent${saw}; JS error: ${consoleErrors[0]}`;
+  return `no request to ${target} was sent after clicking submit${saw}`;
+}
+
+/** Same origin + path, ignoring the query string (GET forms put their fields there). */
+function sameEndpoint(a, b) {
+  try {
+    const [x, y] = [new URL(a), new URL(b)];
+    return x.origin === y.origin && x.pathname === y.pathname;
+  } catch {
+    return false;
+  }
+}
+
+function shortUrl(url) {
+  try {
+    const u = new URL(url);
+    return u.host.replace(/^www\./, '') + u.pathname;
+  } catch {
+    return url;
+  }
 }
 
 async function waitForSuccess(page, form, timeout) {

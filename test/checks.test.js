@@ -80,6 +80,19 @@ test('form tests: intercept, real submit, server error, validation', async () =>
   assert.match(byKey['form#required|intercept'].reason, /validation/);
   assert.ok(untested.some((f) => f.action.endsWith('/api/newsletter')), 'unconfigured newsletter form is listed');
   assert.ok(!untested.some((f) => f.id === 'contact'), 'configured form is not listed as untested');
+
+  // Analytics beacons fired on click are not the submission.
+  for (const mode of ['intercept', 'submit']) {
+    const broken = byKey[`form#tracked-broken|${mode}`];
+    assert.equal(broken.passed, false, `broken form with analytics fails (${mode})`);
+    assert.match(broken.reason, /no request to \/api\/signup was sent/);
+    assert.match(broken.reason, /unrelated requests?: POST 127\.0\.0\.1:\d+\/(g\/collect|tr)/);
+  }
+  const tracked = byKey['form#tracked|intercept'];
+  assert.equal(tracked.passed, true, tracked.reason);
+  assert.equal(new URL(tracked.request.url).pathname, '/api/signup');
+  assert.match(byKey['form#tracked|submit'].reason, /POST \/api\/signup returned 200/, 'third-party 404 beacon is ignored');
+  assert.equal(byKey['form#tracked|submit'].passed, true);
 });
 
 test('report marks new and fixed issues against the previous run', async () => {
