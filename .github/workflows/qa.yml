@@ -20,6 +20,11 @@ jobs:
   qa:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # security-events: write is only used by the optional "Upload SARIF" step (off unless the
+    # repository variable UPLOAD_SARIF is 'true'). It can add code scanning alerts, nothing else.
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v5
 
@@ -41,8 +46,9 @@ jobs:
           key: qa-last-${{ github.run_id }}
           restore-keys: qa-last-
 
+      # Also writes a .sarif and a .junit.xml next to the report, and a summary on the run page.
       - name: Run QA
-        run: node src/cli.js
+        run: node src/cli.js --format sarif,junit
         env:
           SITE_URL: ${{ inputs.site || secrets.SITE_URL }}
           EMAIL_PROVIDER: ${{ secrets.EMAIL_PROVIDER }}
@@ -61,6 +67,21 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # Chat notifications (all optional). Messages link to this run, where the report artifact is.
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          REPORT_URL_BASE: ${{ vars.REPORT_URL_BASE }}
+
+      # Optional: show issues under Security → Code scanning. Turn on by adding the repository
+      # variable UPLOAD_SARIF = true (Settings → Secrets and variables → Actions → Variables).
+      - name: Upload SARIF
+        if: always() && vars.UPLOAD_SARIF == 'true' && hashFiles('reports/*.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: reports/
+          category: warden
 
       - name: Upload report
         if: always()
