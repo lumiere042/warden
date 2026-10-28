@@ -3,11 +3,15 @@ import path from 'node:path';
 
 const DEFAULTS = {
   maxPages: 50,
-  thresholds: { loadMs: 3000, lcpMs: 2500, pageWeightKb: 3000 },
+  thresholds: { loadMs: 3000, lcpMs: 2500, pageWeightKb: 3000, clsScore: 0.1 },
   checkExternalLinks: true,
   exclude: ['mailto:', 'tel:', 'javascript:'],
-  concurrency: 8,
-  timeoutMs: 10000,
+  concurrency: 8, // link probes in flight
+  timeoutMs: 10000, // per link probe / sitemap fetch
+  pageConcurrency: 3, // pages loaded in the browser at once
+  pageTimeoutMs: 30000, // per page load in the browser
+  device: null, // Playwright device name for a mobile run, e.g. "Pixel 7"
+  auth: {}, // { storageState, headers, cookies }; basic auth comes from AUTH_USERNAME / AUTH_PASSWORD
   userAgent: 'warden-qa-bot/0.1 (+https://github.com/lumiere042/warden)',
 };
 

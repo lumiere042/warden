@@ -19,8 +19,12 @@
   "thresholds": {
     "loadMs": 3000,
     "lcpMs": 2500,
-    "pageWeightKb": 3000
+    "pageWeightKb": 3000,
+    "clsScore": 0.1
   },
   "checkExternalLinks": true,
+  "pageConcurrency": 3,
+  "pageTimeoutMs": 30000,
+  "device": null,
   "exclude": ["/wp-admin", "mailto:", "tel:", "javascript:"]
 }

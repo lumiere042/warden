@@ -1,19 +1,33 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { CHECKS } from '../checks/index.js';
 
-const issueId = (siteUrl, i) => `${siteUrl}|${i.check}|${i.page}|${i.key}`;
+// Site-wide issues (a broken URL found on many pages, a duplicate title) are identified by key alone,
+// so a different crawl order doesn't turn the same problem into one "fixed" and one "new".
+const issueId = (siteUrl, i) => (i.siteWide ? `${siteUrl}|${i.check}|${i.key}` : `${siteUrl}|${i.check}|${i.page}|${i.key}`);
+const legacyId = (siteUrl, i) => `${siteUrl}|${i.check}|${i.page}|${i.key}`;
 
-/** Combine per-site results, then mark issues new/fixed relative to the previous run. */
+/**
+ * Combine per-site results, then mark issues new/fixed relative to the previous run.
+ * Each site result is { site, pages, checks: { [check name]: result } }.
+ */
 export function buildReport(siteResults, previous) {
   const prevIds = new Map((previous?.issues || []).map((i) => [i.id, i]));
   const currentIds = new Set();
 
   const sites = siteResults.map((r) => {
-    const issues = [...r.links.issues, ...r.forms.issues, ...r.meta.issues, ...r.performance.issues]
+    // Older callers passed { links, forms, meta, performance } next to site and pages.
+    const results = r.checks || { links: r.links, forms: r.forms, meta: r.meta, performance: r.performance };
+    const ran = CHECKS.filter((c) => results[c.name]);
+    const issues = ran
+      .flatMap((c) => results[c.name].issues.map((i) => ({ ...i, check: i.check || c.name })))
       .map((i) => {
         const id = issueId(r.site.url, i);
         currentIds.add(id);
-        return { ...i, id, isNew: previous ? !prevIds.has(id) : false };
+        // Reports saved before site-wide ids existed used the page-based id; treat those as the same issue.
+        const legacy = i.siteWide && prevIds.has(legacyId(r.site.url, i)) ? legacyId(r.site.url, i) : null;
+        if (legacy) currentIds.add(legacy);
+        return { ...i, id, isNew: previous ? !prevIds.has(id) && !legacy : false };
       })
       .sort((a, b) => (a.severity === b.severity ? 0 : a.severity === 'critical' ? -1 : 1));
 
@@ -21,12 +35,18 @@ export function buildReport(siteResults, previous) {
     return {
       url: r.site.url,
       pagesCrawled: r.pages.length,
-      linksChecked: r.links.checked,
+      linksChecked: results.links?.checked ?? 0,
       issues,
       fixed: [],
-      formResults: r.forms.results,
-      untestedForms: r.forms.untested,
-      performance: r.performance.summary,
+      formResults: results.forms?.results || [],
+      untestedForms: results.forms?.untested || [],
+      performance: results.performance?.summary || null,
+      checks: Object.fromEntries(
+        ran.map((c) => {
+          const res = results[c.name];
+          return [c.name, { title: c.title, checked: res.checked ?? 0, summary: res.summary ?? null, ...(res.error ? { error: res.error } : {}) }];
+        })
+      ),
       counts: {
         critical: issues.filter((i) => i.severity === 'critical').length,
         warning: issues.filter((i) => i.severity === 'warning').length,
@@ -35,6 +55,7 @@ export function buildReport(siteResults, previous) {
         meta: count('meta'),
         slowPages: new Set(issues.filter((i) => i.check === 'performance').map((i) => i.page)).size,
         brokenForms: count('forms'),
+        byCheck: Object.fromEntries(ran.map((c) => [c.name, { critical: count(c.name, 'critical'), warning: count(c.name, 'warning') }])),
       },
     };
   });
@@ -76,15 +97,25 @@ export function saveReport(dir, report, html, previous = null) {
   return htmlPath;
 }
 
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
 export function subjectLine(report) {
   const parts = report.sites.map((s) => {
     const host = new URL(s.url).host;
     const c = s.counts;
     const bits = [];
-    if (c.brokenLinks) bits.push(`${c.brokenLinks} broken link${c.brokenLinks === 1 ? '' : 's'}`);
-    if (c.brokenForms) bits.push(`${c.brokenForms} broken form${c.brokenForms === 1 ? '' : 's'}`);
-    if (c.slowPages) bits.push(`${c.slowPages} slow page${c.slowPages === 1 ? '' : 's'}`);
-    if (c.meta) bits.push(`${c.meta} SEO issue${c.meta === 1 ? '' : 's'}`);
+    if (s.issues.some((i) => i.check === 'pages' && i.key === 'site-down')) bits.push('site unreachable');
+    if (c.brokenLinks) bits.push(plural(c.brokenLinks, 'broken link'));
+    if (c.brokenForms) bits.push(plural(c.brokenForms, 'broken form'));
+    if (c.slowPages) bits.push(plural(c.slowPages, 'slow page'));
+    if (c.meta) bits.push(plural(c.meta, 'SEO issue'));
+    // Any other check: mention its critical issues, e.g. "pages: 2 critical".
+    for (const [name, n] of Object.entries(c.byCheck || {})) {
+      if (['links', 'forms', 'performance', 'meta'].includes(name)) continue;
+      const critical = n.critical - (name === 'pages' && bits[0] === 'site unreachable' ? 1 : 0);
+      if (critical > 0) bits.push(`${(s.checks?.[name]?.title || name).toLowerCase()}: ${critical} critical`);
+    }
+    if (!bits.length && c.warning) bits.push(plural(c.warning, 'warning'));
     const summary = bits.length ? bits.join(', ') : 'all clear';
     return `${host} — ${summary}${c.new ? ` (${c.new} new)` : ''}`;
   });

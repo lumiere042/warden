@@ -184,7 +184,7 @@
 
   <form id="scanForm" class="card hero" autocomplete="off">
     <h2>Check a <span class="hl">website</span></h2>
-    <p>Paste a link. Warden checks links, meta tags, speed and forms.</p>
+    <p>Paste a link. Warden checks pages, links, meta tags, speed and forms.</p>
     <div class="scanrow">
       <input id="url" type="text" inputmode="url" placeholder="https://example.com" aria-label="Website URL" required>
       <button id="go" class="go" type="submit">Run QA</button>
@@ -248,6 +248,7 @@
   const hostOf = (u) => { try { return new URL(u).host; } catch { return u; } };
   const fmtMs = (v) => v == null ? '–' : v >= 1000 ? `${(v / 1000).toFixed(1)}s` : `${v}ms`;
   const fmtKb = (v) => v == null ? '–' : v >= 1000 ? `${(v / 1000).toFixed(1)}MB` : `${v}KB`;
+  const fmtCls = (v) => v == null ? '–' : v.toFixed(2);
   const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
   const pageLink = (u) => el('a', { href: u, target: '_blank', rel: 'noopener', title: u, text: pathOf(u) });
   const newTag = (i) => i.isNew ? el('span', { class: 'new', text: 'NEW' }) : null;
@@ -293,11 +294,12 @@
     $('log').scrollTop = $('log').scrollHeight;
     const crawl = line.match(/crawl (\d+)\/(\d+) (.+)$/);
     if (crawl) { setBar(5 + 60 * (crawl[1] / crawl[2])); return step(`Crawling page ${crawl[1]} of ${crawl[2]}: ${crawl[3]}`); }
-    if (/checking links/.test(line)) { setBar(70); return step('Checking every link and image…'); }
-    if (/testing forms/.test(line)) { setBar(80); return step('Testing forms…'); }
+    const check = line.match(/checking (\w+) \((\d+)\/(\d+)\)/);
+    if (check) { setBar(66 + 20 * ((check[2] - 1) / check[3])); return step(CHECK_STEP[check[1]] || `Running the ${check[1]} check…`); }
     if (/^\s*done:/.test(line)) { setBar(86); return step('Building the report…'); }
     if (/AI summary via/.test(line)) { setBar(92); return step('Writing the AI summary…'); }
   }
+  const CHECK_STEP = { pages: 'Checking pages for errors…', links: 'Checking every link and image…', forms: 'Testing forms…', performance: 'Measuring speed…', meta: 'Reading meta tags…' };
   const step = (t) => { $('step').textContent = t; };
   const setBar = (pct) => { $('barFill').style.width = `${Math.min(100, pct)}%`; };
 
@@ -360,17 +362,27 @@
   const issues = (check) => site().issues.filter((i) => i.check === check);
   const sevOf = (list) => list.some((i) => i.severity === 'critical') ? 'crit' : list.length ? 'warn' : 'ok';
 
-  const TABS = [
+  // Checks with their own tab. Any other check (s.checks, in run order) gets the generic tab.
+  const SPECIAL_TABS = {
+    links: { id: 'links', label: 'Broken links', list: () => issues('links') },
+    forms: { id: 'forms', label: 'Forms', list: () => issues('forms') },
+    performance: { id: 'speed', label: 'Speed', list: () => issues('performance'), count: () => new Set(issues('performance').map((i) => i.page)).size },
+    meta: { id: 'meta', label: 'Meta & SEO', list: () => issues('meta') },
+  };
+  // Reports saved before checks were pluggable have no s.checks.
+  const checkNames = (s) => s.checks ? Object.keys(s.checks) : ['links', 'forms', 'performance', 'meta'];
+  const checkTitle = (s, name) => s.checks?.[name]?.title || name;
+  const tabsFor = (s) => [
     { id: 'overview', label: 'Overview' },
-    { id: 'links', label: 'Broken links', list: () => issues('links') },
-    { id: 'forms', label: 'Forms', list: () => issues('forms') },
-    { id: 'speed', label: 'Speed', list: () => issues('performance'), count: () => new Set(issues('performance').map((i) => i.page)).size },
-    { id: 'meta', label: 'Meta & SEO', list: () => issues('meta') },
+    ...checkNames(s).map((name) => SPECIAL_TABS[name] || { id: `check:${name}`, check: name, label: checkTitle(s, name), list: () => issues(name) }),
     { id: 'fixed', label: 'Fixed', count: () => site().fixed.length, tone: () => 'ok' },
   ];
 
   function render() {
     const s = site();
+    const TABS = tabsFor(s);
+    const current = TABS.find((t) => t.id === view.tab) || TABS[0];
+    view.tab = current.id;
     $('resSite').textContent = hostOf(s.url);
     $('resWhen').textContent = new Date(view.report.generatedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) + ` · ${plural(s.pagesCrawled, 'page')} crawled`;
     $('cats').replaceChildren(...TABS.map((t) => {
@@ -383,7 +395,7 @@
       return el('button', { role: 'tab', 'aria-selected': String(view.tab === t.id), onclick: () => { view.tab = t.id; render(); } }, t.label, badge);
     }));
     const panel = $('panel');
-    panel.replaceChildren(PANELS[view.tab](s));
+    panel.replaceChildren(current.check ? genericPanel(s, current.check) : PANELS[current.id](s));
     // On phones the category row scrolls sideways; keep the selected one in view.
     $('cats').querySelector('[aria-selected=true]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
@@ -404,15 +416,16 @@
           ? el('div', { class: 'b', text: '• ' + l.replace(/^\s*[-*•]\s+/, '') }) : el('div', { text: l }))) : null;
 
       const perfPages = groupPerf(issues('performance'));
-      const cards = [
-        catCard('Broken links', 'links', issues('links'), (i) => [pathOf(i.detail.url), i.message]),
-        catCard('Forms', 'forms', issues('forms'), (i) => [pathOf(i.page), i.detail?.reason || i.message], s.formResults.length ? `${s.formResults.length} tested` : 'none configured'),
-        catCard('Speed', 'speed', perfPages.map((p) => ({ ...p, severity: p.worst })), (p) => [pathOf(p.page), `load ${fmtMs(p.perf.loadMs)} · LCP ${fmtMs(p.perf.lcpMs)}`], s.performance?.avgLoadMs != null ? `avg ${fmtMs(s.performance.avgLoadMs)}` : null),
-        catCard('Meta & SEO', 'meta', issues('meta'), null, null, metaGroups(issues('meta')).map((g) => [g.label, plural(g.items.length, 'page')])),
-      ];
+      const CARDS = {
+        links: () => catCard('Broken links', 'links', issues('links'), (i) => [pathOf(i.detail.url), i.message]),
+        forms: () => catCard('Forms', 'forms', issues('forms'), (i) => [pathOf(i.page), i.detail?.reason || i.message], (s.formResults || []).length ? `${s.formResults.length} tested` : 'none configured'),
+        performance: () => catCard('Speed', 'speed', perfPages.map((p) => ({ ...p, severity: p.worst })), (p) => [pathOf(p.page), `load ${fmtMs(p.perf.loadMs)} · LCP ${fmtMs(p.perf.lcpMs)}${p.perf.cls > (t?.clsScore ?? Infinity) ? ` · CLS ${fmtCls(p.perf.cls)}` : ''}`], s.performance?.avgLoadMs != null ? `avg ${fmtMs(s.performance.avgLoadMs)}` : null),
+        meta: () => catCard('Meta & SEO', 'meta', issues('meta'), null, null, metaGroups(issues('meta')).map((g) => [g.label, plural(g.items.length, 'page')])),
+      };
+      const cards = checkNames(s).map((name) => CARDS[name] ? CARDS[name]() : catCard(checkTitle(s, name), `check:${name}`, issues(name), (i) => [where(i), i.message]));
       const clear = c.critical + c.warning === 0 ? el('p', { class: 'allclear', text: '✓ All clear. No problems found.' }) : null;
       return el('div', {}, tiles, ai, clear, el('div', { class: 'catgrid' }, cards),
-        t ? el('p', { class: 'lead', style: 'margin-top:16px', text: `Speed limits: load ${fmtMs(t.loadMs)}, LCP ${fmtMs(t.lcpMs)}, page weight ${fmtKb(t.pageWeightKb)}.` }) : null);
+        t ? el('p', { class: 'lead', style: 'margin-top:16px', text: `Speed limits: load ${fmtMs(t.loadMs)}, LCP ${fmtMs(t.lcpMs)}, page weight ${fmtKb(t.pageWeightKb)}${t.clsScore != null ? `, layout shift (CLS) ${fmtCls(t.clsScore)}` : ''}.` }) : null);
     },
 
     links(s) {
@@ -482,6 +495,7 @@
         tile(fmtMs(p.avgLoadMs), 'Avg load', null, t.loadMs && `limit ${fmtMs(t.loadMs)}`),
         tile(fmtMs(p.avgLcpMs), 'Avg LCP', null, t.lcpMs && `limit ${fmtMs(t.lcpMs)}`),
         tile(fmtKb(p.avgTransferKb), 'Avg weight', null, t.pageWeightKb && `limit ${fmtKb(t.pageWeightKb)}`),
+        p.avgCls !== undefined ? tile(fmtCls(p.avgCls), 'Avg CLS', null, t.clsScore != null && `limit ${fmtCls(t.clsScore)}`) : null,
         tile(flagged.length, 'Slow pages', flagged.length ? 'var(--amber)' : 'var(--mint-ink)'));
       const rows = flagged.length ? flagged : (p.slowest || []).map((x) => ({ page: x.url, perf: x }));
       return el('div', {},
@@ -489,10 +503,11 @@
         tiles,
         el('div', { class: 'h4', text: flagged.length ? `Pages over the limit (${flagged.length})` : '✓ No page over the limits. Slowest pages:' }),
         el('table', { class: 'tbl' },
-          el('thead', {}, el('tr', {}, el('th', { text: 'Page' }), el('th', { class: 'num', text: 'Load' }), el('th', { class: 'num', text: 'LCP' }), el('th', { class: 'num', text: 'Weight' }), el('th', { class: 'num hide-sm', text: 'Requests' }), el('th', { class: 'num hide-sm', text: 'TTFB' }))),
+          el('thead', {}, el('tr', {}, el('th', { text: 'Page' }), el('th', { class: 'num', text: 'Load' }), el('th', { class: 'num', text: 'LCP' }), el('th', { class: 'num', text: 'Weight' }), el('th', { class: 'num hide-sm', text: 'CLS' }), el('th', { class: 'num hide-sm', text: 'Requests' }), el('th', { class: 'num hide-sm', text: 'TTFB' }))),
           el('tbody', {}, rows.map((r) => el('tr', {},
             el('td', { class: 'url' }, el('div', { class: 'cell' }, pageLink(r.page), r.isNew ? el('span', { class: 'new', text: 'NEW' }) : null)),
             metric(r.perf.loadMs, t.loadMs, fmtMs), metric(r.perf.lcpMs, t.lcpMs, fmtMs), metric(r.perf.transferKb, t.pageWeightKb, fmtKb),
+            metric(r.perf.cls, t.clsScore, fmtCls, 'hide-sm'),
             el('td', { class: 'num hide-sm', text: r.perf.requests ?? '–' }),
             el('td', { class: 'num hide-sm', text: fmtMs(r.perf.ttfbMs) }))))));
     },
@@ -528,14 +543,14 @@
         list.length ? el('table', { class: 'tbl' },
           el('thead', {}, el('tr', {}, el('th', { text: 'Category' }), el('th', { text: 'Page' }), el('th', { text: 'Was' }))),
           el('tbody', {}, list.map((f) => el('tr', {},
-            el('td', {}, el('span', { class: 'badge ok', text: CHECK_LABEL[f.check] || f.check })),
+            el('td', {}, el('span', { class: 'badge ok', text: CHECK_LABEL[f.check] || checkTitle(s, f.check) })),
             el('td', { class: 'url' }, pageLink(f.page)),
             el('td', { text: f.message }))))) : null);
     },
   };
 
   /* ---------- panel helpers ---------- */
-  const CHECK_LABEL = { links: 'Link', forms: 'Form', performance: 'Speed', meta: 'Meta' };
+  const CHECK_LABEL = { pages: 'Page', links: 'Link', forms: 'Form', performance: 'Speed', meta: 'Meta' };
   const head = (title, lead) => el('div', {}, el('h3', { text: title }), el('p', { class: 'lead', text: lead }));
   const tile = (n, label, color, sub) => el('div', { class: 'tile' }, el('div', { class: 'n', style: color ? `color:${color}` : null, text: n ?? '–' }), el('div', { class: 'l', text: label }), sub ? el('div', { class: 's', text: sub }) : null);
 
@@ -558,10 +573,31 @@
 
   const kindLabel = (i) => ({ a: 'Link', img: 'Image', script: 'Script', link: 'Stylesheet/icon' })[i.detail.kind || (i.message.match(/(?:Broken|Unreachable) (\w+)/) || [])[1]] || '–';
 
-  function metric(v, limit, fmt) {
+  function metric(v, limit, fmt, extra = '') {
     const cls = v == null || !limit ? '' : v > limit * 2 ? 'bad' : v > limit ? 'meh' : '';
-    return el('td', { class: `num ${cls}`, text: fmt(v) });
+    return el('td', { class: `num ${cls} ${extra}`, text: fmt(v) });
   }
+
+  // Any check without its own tab: one row per issue. Site-wide issues list the pages they were seen on.
+  function genericPanel(s, name) {
+    const all = issues(name);
+    const info = s.checks?.[name] || {};
+    const title = checkTitle(s, name);
+    const failed = info.error ? el('p', { class: 'hint', text: `This check failed to run: ${info.error}` }) : null;
+    if (!all.length) return el('div', {}, head(title, `${info.checked ?? 0} checked.`), failed, el('p', { class: 'allclear', text: '✓ No problems found.' }));
+    const crit = all.filter((i) => i.severity === 'critical').length;
+    return el('div', {},
+      head(title, `${plural(all.length, 'problem')}${crit ? `, ${crit} critical` : ''}.`), failed,
+      el('table', { class: 'tbl' },
+        el('thead', {}, el('tr', {}, el('th', { text: 'Severity' }), el('th', { text: 'Page' }), el('th', { text: 'Problem' }))),
+        el('tbody', {}, all.map((i) => el('tr', {},
+          el('td', {}, el('span', { class: `badge ${i.severity === 'critical' ? 'crit' : 'warn'}`, text: i.severity === 'critical' ? 'Critical' : 'Warning' })),
+          el('td', { class: 'found' }, i.siteWide && i.detail?.pages?.length > 1
+            ? el('div', {}, el('div', { class: 'note', style: 'color:var(--muted)', text: plural(i.detail.pages.length, 'page') }), foundOn(i.detail.pages), newTag(i))
+            : el('div', { class: 'cell' }, pageLink(i.page), newTag(i))),
+          el('td', { text: i.message }))))));
+  }
+  const where = (i) => i.siteWide && i.detail?.pages?.length > 1 ? plural(i.detail.pages.length, 'page') : pathOf(i.page);
 
   // One row per page, merging its load / LCP / weight issues.
   function groupPerf(list) {

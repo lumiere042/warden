@@ -1,3 +1,9 @@
+export default {
+  name: 'meta',
+  title: 'Meta & SEO',
+  run: async ({ pages }) => checkMeta(pages),
+};
+
 /** SEO / meta-tag checks per page, plus site-wide duplicate detection. */
 export function checkMeta(pages) {
   const issues = [];
@@ -41,6 +47,7 @@ export function checkMeta(pages) {
         check: 'meta',
         severity: 'warning',
         key: `duplicate-${field}:${value}`,
+        siteWide: true,
         page: urls[0],
         message: `Same ${label} on ${urls.length} pages: "${value.slice(0, 80)}"`,
         detail: { pages: urls },
