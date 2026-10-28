@@ -1,7 +1,6 @@
 
 
 
-https://github.com/user-attachments/assets/9057fd67-e463-4cc5-8122-cc8eaf1e2a4e
 
 # Warden
 
@@ -25,6 +24,10 @@ Automated QA for any website. Paste a link and Warden crawls the site in a real 
 Each problem is **critical** or a **warning**, and is marked **NEW** or **FIXED** compared with your last scan of that site.
 
 ---
+
+
+https://github.com/user-attachments/assets/297c024a-6594-4b5f-aeab-95fa4d0593cc
+
 
 ## Three ways to run it
 
