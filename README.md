@@ -6,7 +6,9 @@
 
 Automated QA for any website. Paste a link and Warden crawls the site in a real browser, then shows you what's broken: dead pages and links, forms that don't send, slow pages, SEO gaps, accessibility problems and HTTPS mistakes. An AI summary from **the AI of your choice** (Claude, OpenAI, Gemini, a local model, or your own adapter) can tell you what to fix first.
 
-**No server or account needed.** It runs on your own computer, in Docker, or free on GitHub Actions, and only when you start it.
+https://github.com/user-attachments/assets/297c024a-6594-4b5f-aeab-95fa4d0593cc
+
+**No server or account needed.** It runs on your own computer, in Docker, or free on GitHub Actions.
 
 ## What it checks
 
@@ -24,10 +26,6 @@ Automated QA for any website. Paste a link and Warden crawls the site in a real 
 Each problem is **critical** or a **warning**, and is marked **NEW** or **FIXED** compared with your last scan of that site.
 
 ---
-
-
-https://github.com/user-attachments/assets/297c024a-6594-4b5f-aeab-95fa4d0593cc
-
 
 ## Three ways to run it
 
